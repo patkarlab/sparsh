@@ -1,0 +1,20 @@
+#!/bin/bash
+#PBS -N sparsh_cn_call
+#PBS -l select=1:ncpus=2:mem=16gb
+#PBS -l walltime=06:00:00
+#PBS -j oe
+# Copy-number calling for all counted samples as a batch job (no network access needed). Submit from the
+# repository folder:
+#   qsub -v COUNTS_DIR=/path/to/counts,OUT_DIR=/path/to/calls jobs/karyotype_call.pbs
+# Optional: SAMPLE_SHEET (CSV with sample, sex, blast_percent), BUILD (default hg19), BIN_SIZE (default auto).
+# OUT_DIR must not exist yet or be empty.
+
+set -eo pipefail
+cd "${PBS_O_WORKDIR:-$(pwd)}"
+CONDA_BASE=${CONDA_BASE:-$HOME/miniconda3}
+[ -f "$CONDA_BASE/etc/profile.d/conda.sh" ] && source "$CONDA_BASE/etc/profile.d/conda.sh"
+conda activate "${CONDA_ENV:-sparsh}"
+args=(--counts_dir "${COUNTS_DIR:?Set COUNTS_DIR}" --out_dir "${OUT_DIR:?Set OUT_DIR}" --build "${BUILD:-hg19}"
+      --bin_size "${BIN_SIZE:-auto}")
+[ -n "${SAMPLE_SHEET:-}" ] && args+=(--sample_sheet "$SAMPLE_SHEET")
+python scripts/karyotype.py call "${args[@]}"

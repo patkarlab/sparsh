@@ -1,0 +1,23 @@
+# Conda environment for SPARSH.
+#
+#   conda env create -f envs/sparsh.yml          (mamba or micromamba work the same way)
+#   conda activate sparsh
+#   bash tests/run_all.sh
+#
+# conda-forge installs a PyTorch build with CUDA when the machine has an NVIDIA driver, and a CPU build otherwise;
+# only training needs the GPU. samtools is used by the copy-number step, and Optuna only by scripts/tune.py. The
+# region analysis of the figures runs in a separate R environment (envs/figures_r.yml).
+name: sparsh
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python >=3.10,<3.13
+  - pytorch >=2.0
+  - numpy >=1.24
+  - pandas >=2.0
+  - scipy >=1.10
+  - scikit-learn >=1.3
+  - matplotlib-base >=3.7
+  - samtools >=1.15
+  - optuna >=3.6

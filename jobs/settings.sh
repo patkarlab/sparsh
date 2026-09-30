@@ -1,0 +1,18 @@
+# Settings read by the batch jobs in jobs/, apart from the copy-number jobs, which take theirs from qsub -v.
+# Set the paths for your system, then check them on the login node:
+#   bash jobs/check_settings.sh
+# A value passed with "qsub -v NAME=value" takes precedence over the value here.
+
+# Training data, only read: the pickle of array beta values (docs/TRAINING.md), and optionally a list of
+# Sample_IDs to leave out and a CSV of groups for grouped cross-validation (scripts/check_data.py and
+# scripts/merge_groups.py write such files). Leave the last two empty when not used.
+: "${DATA_PATH:=/path/to/arrays.pkl}"
+: "${EXCLUDE_IDS=}"
+: "${GROUPS_FILE=}"
+# Classes left out of the model, by prefix, for scripts/check_data.py; the training recipe lists its own.
+: "${EXCLUDE_PREFIXES:=MPAL AML_NOS B-ALL_NOS}"
+
+: "${RUNS_DIR:=$HOME/sparsh_runs}"     # every training run gets its own new folder here
+: "${CONDA_ENV:=sparsh}"              # environment with the packages of requirements.txt
+: "${CONDA_BASE:=$HOME/miniconda3}"   # where conda is installed
+: "${CUDA_MODULE=}"                   # environment module loaded before activation, for example cuda/12.3

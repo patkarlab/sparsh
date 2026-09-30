@@ -1,0 +1,23 @@
+#!/bin/bash
+#PBS -N sparsh_checks
+#PBS -l select=1:ncpus=8:mem=48gb
+#PBS -l walltime=02:00:00
+#PBS -j oe
+# Checks of the training data before training (scripts/check_data.py): class counts, study confounding,
+# missing values and likely duplicate samples. CPU only; add "-q <queue>" for your site. Submit from the
+# repository folder:  qsub jobs/check_data.pbs
+
+set -eo pipefail
+cd "${PBS_O_WORKDIR:-$(pwd)}"
+[ -f jobs/common.sh ] || { echo "ERROR: submit from the repository folder"; exit 1; }
+source "${SETTINGS_FILE:-jobs/settings.sh}"
+source jobs/common.sh
+require_file DATA_PATH "$DATA_PATH"
+[ -z "$EXCLUDE_IDS" ] || require_file EXCLUDE_IDS "$EXCLUDE_IDS"
+
+# shellcheck disable=SC2086  # EXCLUDE_PREFIXES is a word list
+python scripts/check_data.py \
+  --data_path "$DATA_PATH" \
+  --output_dir "$RUNS_DIR/data_checks" \
+  ${EXCLUDE_IDS:+--exclude_ids "$EXCLUDE_IDS"} \
+  --exclude_prefixes $EXCLUDE_PREFIXES

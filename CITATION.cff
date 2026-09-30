@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+message: "If you use SPARSH, please cite the article that describes it. Until it is published, please cite this repository."
+title: "SPARSH: Subtype Prediction via Adaptive Recognition from Sparse Haematological data"
+type: software
+authors:
+  - name: "The SPARSH Authors"
+version: 1.0.0
+license: MIT
+repository-code: "https://github.com/patkarlab/sparsh"
+keywords:
+  - acute leukaemia
+  - DNA methylation
+  - nanopore sequencing
+  - classification
+  - copy number

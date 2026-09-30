@@ -1,0 +1,27 @@
+#!/bin/bash
+#PBS -N sparsh_predict
+#PBS -l select=1:ncpus=8:mem=48gb
+#PBS -l walltime=02:00:00
+#PBS -j oe
+# Classify nanopore samples with a trained run (scripts/predict.py; docs/NANOPORE.md). CPU only; add
+# "-q <queue>" for your site. Submit from the repository folder, for example:
+#   qsub -v RUN_NAME=v04_labels,ONT_DIR=/path/to/sample_csvs jobs/predict.pbs
+# Results go to $RUNS_DIR/$RUN_NAME/ont_eval (a new folder inside the run); EVAL_NAME=... changes its name.
+# TRUTH=/path/to/truth.csv scores the predictions against known labels. EXTRA_ARGS="..." passes further
+# scripts/predict.py options, e.g. "--duplicate_probes first".
+
+set -eo pipefail
+cd "${PBS_O_WORKDIR:-$(pwd)}"
+[ -f jobs/common.sh ] || { echo "ERROR: submit from the repository folder"; exit 1; }
+source "${SETTINGS_FILE:-jobs/settings.sh}"
+source jobs/common.sh
+require_file "run" "$RUNS_DIR/${RUN_NAME:?Set RUN_NAME}/config.json" "No finished training run named $RUN_NAME in $RUNS_DIR"
+[ -z "${TRUTH:-}" ] || require_file TRUTH "$TRUTH" "Check the TRUTH=... path given to qsub -v"
+
+# shellcheck disable=SC2086  # EXTRA_ARGS is a word list
+python scripts/predict.py \
+  --model_dir "$RUNS_DIR/$RUN_NAME" \
+  --ont_dir "${ONT_DIR:?Set ONT_DIR}" \
+  --output_dir "$RUNS_DIR/$RUN_NAME/${EVAL_NAME:-ont_eval}" \
+  ${TRUTH:+--ground_truth "$TRUTH"} \
+  ${EXTRA_ARGS:-}

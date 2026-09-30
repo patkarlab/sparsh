@@ -1,0 +1,7 @@
+{
+  "description": "Names shown in the outputs of scripts/predict.py (evaluation/display.py). Keys are internal class names, which the run folders, training data, cross-validation files and configs/class_hierarchy.json keep; values are the names shown. Probabilities, calls and scores do not change, and a ground-truth file may use either name. T-ALL_HOXA_ETP holds HOXA-activated and early T-cell precursor-like T-ALL, not only HOXA9 activation, and B-ALL_PAX5_BCR-ABL1_BCR-ABL1-Like_Other holds PAX5-altered, BCR::ABL1, BCR::ABL1-like and other B-ALL without a defining lesion. Pass --display_names none to show the internal names.",
+  "display": {
+    "T-ALL_HOXA9_ETP": "T-ALL_HOXA_ETP",
+    "B-ALL_PAX5_BCR-ABL1_BCR-ABL1-Like": "B-ALL_PAX5_BCR-ABL1_BCR-ABL1-Like_Other"
+  }
+}

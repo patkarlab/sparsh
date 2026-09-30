@@ -1,0 +1,29 @@
+#!/bin/bash
+#PBS -N sparsh_tune
+#PBS -l select=1:ncpus=8:ngpus=1:mem=64gb
+#PBS -l walltime=12:00:00
+#PBS -j oe
+# Bounded hyperparameter study (scripts/tune.py; docs/TRAINING.md). Needs one GPU; add "-q <queue>" for your
+# site. A job runs trials until the study has MAX_TRIALS finished or pruned trials (default 40) or TIMEOUT_HOURS
+# have passed (default 10.5, within the 12-hour walltime); several jobs can share one study. Submit from the
+# repository folder, for example two jobs, the second a few minutes after the first:
+#   qsub -v BASE_RUN=my_model,STUDY=tune_study jobs/tune.pbs
+#   qsub -v BASE_RUN=my_model,STUDY=tune_study jobs/tune.pbs
+# BASE_RUN is a finished run in $RUNS_DIR whose recipe the trials start from; STUDY names the study folder in
+# $RUNS_DIR. EXTRA_ARGS="..." passes further scripts/tune.py options (e.g. --no_pruning).
+# Summary, on the login node: python scripts/tune.py --study_dir $RUNS_DIR/tune_study --report
+
+set -eo pipefail
+cd "${PBS_O_WORKDIR:-$(pwd)}"
+[ -f jobs/common.sh ] || { echo "ERROR: submit from the repository folder"; exit 1; }
+source "${SETTINGS_FILE:-jobs/settings.sh}"
+source jobs/common.sh
+require_file "base run" "$RUNS_DIR/${BASE_RUN:?Set BASE_RUN}/config.json" "No finished training run named $BASE_RUN in $RUNS_DIR"
+python -c "import optuna" 2>/dev/null || { echo "ERROR: Optuna is not installed in $CONDA_ENV: pip install optuna"; exit 1; }
+echo "Study $RUNS_DIR/${STUDY:?Set STUDY} | base run $BASE_RUN | extra arguments: ${EXTRA_ARGS:-none}"
+
+# shellcheck disable=SC2086  # EXTRA_ARGS is a word list
+python scripts/tune.py --base_run "$RUNS_DIR/$BASE_RUN" --study_dir "$RUNS_DIR/$STUDY" \
+  --max_trials "${MAX_TRIALS:-40}" --timeout_hours "${TIMEOUT_HOURS:-10.5}" ${EXTRA_ARGS:-}
+
+echo "Finished $(date)"

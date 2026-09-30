@@ -1,0 +1,12 @@
+{
+ "description": "Label merges applied to the ANNOTATION column before training and to ground-truth files before evaluation. Keys are raw labels, values are model classes; labels not listed are used as they are. A training run saves the copy it used, and prediction applies the copy in the model folder. The merges here join labels of an earlier naming of the classes; they match none of the labels of the released model's training data, whose labels already carried its class names. Edit this file, not the code, to change the class scheme.",
+ "merge": {
+  "MDS_SF3B1_mut": "MDS",
+  "AML_DEK-NUP214": "AML_mutated_NPM1_Nup98_DEKnup214",
+  "AML_NUP98-r": "AML_mutated_NPM1_Nup98_DEKnup214",
+  "AML_mutated NPM1": "AML_mutated_NPM1_Nup98_DEKnup214",
+  "B-ALL_PAX5 alt": "B-ALL_PAX5_BCR-ABL1_B-ALL_BCR-ABL1_like",
+  "B-ALL_BCR-ABL1 like": "B-ALL_PAX5_BCR-ABL1_B-ALL_BCR-ABL1_like",
+  "B-ALL_BCR-ABL1": "B-ALL_PAX5_BCR-ABL1_B-ALL_BCR-ABL1_like"
+ }
+}

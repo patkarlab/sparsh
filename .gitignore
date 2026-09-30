@@ -1,0 +1,20 @@
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.DS_Store
+
+# local data, trained networks and results; none of them belong in the repository
+*.pkl
+*.pt
+*.bam
+*.bai
+runs/
+predictions/
+reports/
+samples/
+refs/
+counts/
+copy_number/
+jobs/logs/
+*.o[0-9]*
+*.e[0-9]*

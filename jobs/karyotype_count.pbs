@@ -1,0 +1,17 @@
+#!/bin/bash
+#PBS -N sparsh_cn_count
+#PBS -l select=1:ncpus=8:mem=16gb
+#PBS -l walltime=24:00:00
+#PBS -j oe
+# Read counting for the copy-number karyotype as a batch job, for nodes that can reach the object store.
+# Submit from the repository folder:
+#   qsub -v MANIFEST=/path/to/manifest.tsv,OUT_DIR=/path/to/counts,PARALLEL=3 jobs/karyotype_count.pbs
+# FETCH, SAMTOOLS, BUILD, MIN_MAPQ and BIN_SIZE can be passed the same way (see jobs/karyotype_count.sh).
+# Samples already counted are skipped, so a job that reaches its walltime can simply be submitted again.
+
+set -eo pipefail
+cd "${PBS_O_WORKDIR:-$(pwd)}"
+CONDA_BASE=${CONDA_BASE:-$HOME/miniconda3}
+[ -f "$CONDA_BASE/etc/profile.d/conda.sh" ] && source "$CONDA_BASE/etc/profile.d/conda.sh"
+conda activate "${CONDA_ENV:-sparsh}"
+bash jobs/karyotype_count.sh "${MANIFEST:?Set MANIFEST}" "${OUT_DIR:?Set OUT_DIR}" "${PARALLEL:-3}"

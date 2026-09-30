@@ -1,0 +1,36 @@
+#!/bin/bash
+#PBS -N sparsh_train
+#PBS -l select=1:ncpus=8:ngpus=1:mem=64gb
+#PBS -l walltime=12:00:00
+#PBS -j oe
+# One training run: nested cross-validation with five fold networks (scripts/train.py; docs/TRAINING.md).
+# Needs one GPU; add "-q <queue>" for your site. Submit from the repository folder:
+#   qsub -v RUN_NAME=my_run jobs/train.pbs
+# The run uses the recipe of the released model (configs/recipe_v0.4.0.args) with the training data of
+# jobs/settings.sh, and writes into $RUNS_DIR/$RUN_NAME. Optional: RECIPE=<another args file>, SEED=<n> (the
+# recipe uses 42), and EXTRA_ARGS="..." for any other scripts/train.py option, which overrides the recipe, e.g.
+#   qsub -v RUN_NAME=my_run_s43,SEED=43 jobs/train.pbs
+#   qsub -v RUN_NAME=my_run_ls0,EXTRA_ARGS="--label_smoothing 0" jobs/train.pbs
+
+set -eo pipefail
+cd "${PBS_O_WORKDIR:-$(pwd)}"
+[ -f jobs/common.sh ] || { echo "ERROR: submit from the repository folder"; exit 1; }
+source "${SETTINGS_FILE:-jobs/settings.sh}"
+source jobs/common.sh
+require_file DATA_PATH "$DATA_PATH"
+[ -z "$EXCLUDE_IDS" ] || require_file EXCLUDE_IDS "$EXCLUDE_IDS"
+[ -z "$GROUPS_FILE" ] || require_file GROUPS_FILE "$GROUPS_FILE"
+RECIPE="${RECIPE:-configs/recipe_v0.4.0.args}"
+require_file RECIPE "$RECIPE" "Check the RECIPE=... path given to qsub -v"
+echo "Recipe $RECIPE | run folder $RUNS_DIR/${RUN_NAME:?Set RUN_NAME} | extra arguments: ${EXTRA_ARGS:-none}"
+
+# shellcheck disable=SC2086  # EXTRA_ARGS is a word list
+python scripts/train.py "@$RECIPE" \
+  --data_path "$DATA_PATH" \
+  --output_dir "$RUNS_DIR/$RUN_NAME" \
+  ${EXCLUDE_IDS:+--exclude_ids "$EXCLUDE_IDS"} \
+  ${GROUPS_FILE:+--groups_file "$GROUPS_FILE"} \
+  ${SEED:+--seed "$SEED"} \
+  ${EXTRA_ARGS:-}
+
+echo "Finished $(date)"
