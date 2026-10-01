@@ -6,9 +6,7 @@ CpG the reads cover.
     python scripts/bedmethyl_to_csv.py --bedmethyl SAMPLE_pileup.bed --manifest EPIC-8v2-0_A2.csv \
         --sample SAMPLE --out SAMPLE.csv
 
-This is the matrix step of the laboratory's MethPipe pipeline (intersect_epic.py), written again without its
-dependence on bedtools; on test data the two give the same file, byte for byte (tests/test_bedmethyl.sh checks the
-rules). Its input is the bedMethyl file of
+Its input is the bedMethyl file of
 
     modkit pileup --ref hg19.fasta --modified-bases 5mC 5hmC --combine-mods --cpg SAMPLE.bam SAMPLE_pileup.bed
 
@@ -19,10 +17,17 @@ The probes come from Illumina's manifest of the MethylationEPIC v2.0 array (EPIC
 on line 8): the probe identifier from the first column whose name contains "ilmn" (IlmnID), the chromosome from the
 column CHR, and the position from the first column whose name contains both "mapinfo" and "37", the GRCh37 position
 MAPINFO_37 (without such a column, the first whose name contains "mapinfo"). Chromosome names are compared without
-"chr", other punctuation and case, and only chromosomes 1 to 22, X and Y are used. Each probe stands for the single
-base at its position, the C of its CpG on the forward strand, so it takes the pileup row that starts there; the row
-of the reverse strand starts one base later, on the G, and is not used. The value is 1 when the row's percentage of
-modified calls is 50 or more and 0 otherwise (the mean percentage is taken if more than one row overlaps a probe).
+"chr", other punctuation and case, and only chromosomes 1 to 22, X and Y are used. A probe is placed on one base of
+its CpG, in most cases the C of the forward strand; the row of the other strand lies one base after it (one base
+before it for a probe placed on the G).
+
+By default the calls of the two strands of the probe's CpG are added: the value is 1 when more than half of them are
+modified, 0 when fewer than half are, and the probe is left out when they are split exactly in half. A CpG is one
+site to the model and its two strands are mostly methylated alike, so this puts the reads of both strands behind
+each call. --strands forward takes the row at the probe's own base alone and writes 1 when its percentage of
+modified calls is 50 or more, 0 otherwise (the mean percentage if more than one row overlaps the probe). That is the
+matrix step of the laboratory's MethPipe pipeline (intersect_epic.py), written again without its dependence on
+bedtools; on test data the two give the same file, byte for byte (tests/test_bedmethyl.sh checks the rules).
 
 Columns are named by the probe identifier up to its first underscore (cg25324105 for cg25324105_BC11), in the order
 of the full identifiers, so the replicate probes of one CpG give columns with the same name; scripts/predict.py
@@ -30,11 +35,8 @@ combines such columns (by default their mean). The row is named after --sample. 
 read, the probes with a call and the mean and median methylated fraction before the calls are made.
 
 The manifest is checked first: a file with fewer probe rows than its 'Loci Count' line declares, such as a copy cut
-short in transfer, is refused, since it would otherwise give matrices with few probes and no error.
-
---strands both is a variant under evaluation, not MethPipe's method: the reads of both strands of the probe's
-CpG are added (modified calls over valid calls of the two rows), the call is 1 above one half and 0 below, and a CpG
-whose reads are split exactly in half is left out. The pileup may be gzip-compressed.
+short in transfer, is refused, since it would otherwise give matrices with few probes and no error. The pileup
+may be gzip-compressed.
 """
 
 import argparse
@@ -230,8 +232,9 @@ def main() -> int:
     ap.add_argument("--manifest", required=True, help="Illumina's MethylationEPIC v2.0 manifest (CSV)")
     ap.add_argument("--sample", required=True, help="sample name, written as the row name")
     ap.add_argument("--out", required=True, help="CSV to write")
-    ap.add_argument("--strands", choices=["forward", "both"], default="forward",
-                    help="forward: MethPipe's method (default); both: the variant under evaluation")
+    ap.add_argument("--strands", choices=["both", "forward"], default="both",
+                    help="both: the calls of both strands of each CpG added (default); forward: the forward strand "
+                         "alone, as MethPipe's intersect_epic.py")
     args = ap.parse_args()
 
     out = Path(args.out)

@@ -1,8 +1,8 @@
 #!/bin/bash
 # The single-sample pipeline (scripts/run_sample.py) on synthetic reads with modified-base calls: one sorted file,
 # the same reads split into two unsorted files as the hourly files of a run, and the reads unaligned, aligned again
-# with minimap2 and with dorado when they are installed; each must give the same matrix, and a finished run must not
-# be redone. Needs samtools and modkit (set SAMTOOLS, MODKIT, MINIMAP2 and DORADO if they are not on PATH); skipped
+# with minimap2 and with dorado when they are installed; each must give the same matrix, a finished run must not
+# be redone, and a run made with one choice of strands must not be continued with the other. Needs samtools and modkit (set SAMTOOLS, MODKIT, MINIMAP2 and DORADO if they are not on PATH); skipped
 # without them. Trains a tiny model first. CPU only, about two minutes. Run from the repository folder:
 #   bash tests/test_pipeline.sh
 set -uo pipefail
@@ -71,6 +71,10 @@ run S_SORTED dorado "$TMP/in/reads.bam" --sex F --blast_percent 70 > "$TMP/again
 step not_redone test "$(grep -c 'done before' "$TMP/again.log")" -eq 5
 run S_SORTED dorado "$TMP/in/reads.bam" --sex F --blast_percent 70 --redo report > "$TMP/redo.log" 2>&1
 step redo_report test "$(grep -c 'done before' "$TMP/redo.log")" -eq 4
+step refuse_other_strands bash -c "! '$PYTHON' scripts/run_sample.py --sample S_SORTED --bam '$TMP/in/reads.bam' \
+    --out_dir '$TMP/out/S_SORTED' --reference '$TMP/in/ref.fa' --manifest '$TMP/in/manifest.csv' \
+    --model_dir '$TMP/model' --no_panel --samtools '$SAMTOOLS' --modkit '$MODKIT' --strands forward \
+    > '$TMP/strands.log' 2>&1 && grep -q 'give --redo methylation' '$TMP/strands.log'"
 step contents "$PYTHON" - "$TMP" <<'PY'
 import json, sys
 from pathlib import Path

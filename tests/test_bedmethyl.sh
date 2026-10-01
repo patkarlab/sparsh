@@ -1,9 +1,10 @@
 #!/bin/bash
 # From a modkit bedMethyl file to the one-row CSV that scripts/predict.py reads (scripts/bedmethyl_to_csv.py), on a
 # small manifest in the layout of Illumina's MethylationEPIC v2.0 file: GRCh37 positions taken from MAPINFO_37, the
-# forward-strand row used and the reverse-strand row not, calls of 1 from 50% modified up, replicate probes giving
-# columns of one name, chromosome names with and without chr, the two-strand variant (strands added, exact halves left
-# out) on a compressed pileup, and the CSV read back with the loader of predict.py.
+# two strands of each CpG added by default (calls of 1 above one half, exact halves left out), also on a compressed
+# pileup; with --strands forward, MethPipe's rules (the forward-strand row alone, 1 from 50% modified up); replicate
+# probes giving columns of one name, chromosome names with and without chr, and the CSV read back with the loader of
+# predict.py.
 # A manifest with fewer probe rows than it declares is refused. CPU only, a few seconds. Run from the repository
 # folder:
 #   bash tests/test_bedmethyl.sh
@@ -53,14 +54,17 @@ printf ',cg01,cg02,cg03,cg04,cg04,cg07\nS1,1,1,0,1,1,0\n' > "$TMP/expected.csv"
 printf ',cg01,cg03,cg04,cg04,cg07\nS1,0,0,1,1,1\n' > "$TMP/expected_both.csv"
 
 step convert  "$PYTHON" scripts/bedmethyl_to_csv.py --bedmethyl "$TMP/S1_pileup.bed" --manifest "$TMP/manifest.csv" \
-                  --sample S1 --out "$TMP/out/S1.csv"
+                  --sample S1 --out "$TMP/out/S1.csv" --strands forward
 step exact    cmp "$TMP/out/S1.csv" "$TMP/expected.csv"
 gzip -c "$TMP/S1_pileup.bed" > "$TMP/S1_pileup.bed.gz"
 step both     "$PYTHON" scripts/bedmethyl_to_csv.py --bedmethyl "$TMP/S1_pileup.bed.gz" --manifest "$TMP/manifest.csv" \
                   --sample S1 --out "$TMP/out/S1_both.csv" --strands both
 step exact_both cmp "$TMP/out/S1_both.csv" "$TMP/expected_both.csv"
+step default_both "$PYTHON" scripts/bedmethyl_to_csv.py --bedmethyl "$TMP/S1_pileup.bed" \
+                  --manifest "$TMP/manifest.csv" --sample S1 --out "$TMP/out/S1_default.csv"
+step exact_default cmp "$TMP/out/S1_default.csv" "$TMP/expected_both.csv"
 step refuse_existing bash -c "! '$PYTHON' scripts/bedmethyl_to_csv.py --bedmethyl '$TMP/S1_pileup.bed' \
-                  --manifest '$TMP/manifest.csv' --sample S1 --out '$TMP/out/S1.csv' > /dev/null 2>&1"
+                  --manifest '$TMP/manifest.csv' --sample S1 --out '$TMP/out/S1.csv' --strands forward > /dev/null 2>&1"
 # a manifest cut short in transfer, with fewer probe rows than its Loci Count line declares, is refused
 head -n 12 "$TMP/manifest.csv" > "$TMP/manifest_cut.csv"
 step refuse_incomplete_manifest bash -c "! '$PYTHON' scripts/bedmethyl_to_csv.py --bedmethyl '$TMP/S1_pileup.bed' \

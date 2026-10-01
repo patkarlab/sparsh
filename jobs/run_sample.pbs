@@ -8,8 +8,9 @@
 #   qsub -v SAMPLE=S01,BAM=/data/run1/bam_pass/barcode01,OUT_DIR=/results/S01,SEX=F,BLAST=80 jobs/run_sample.pbs
 # BAM is a BAM file or a folder of them; several are separated by colons. SEX (F or M) and BLAST (the blast
 # percentage) are optional. The reference, the manifest, the model, the copy-number panel and the tools come from
-# jobs/settings.sh; ALIGNER=minimap2 aligns with minimap2 instead of dorado. A job stopped by its walltime goes on
-# where it stopped when it is submitted again with the same values.
+# jobs/settings.sh; ALIGNER=minimap2 aligns with minimap2 instead of dorado, and STRANDS=forward makes the model's
+# input from the forward strand alone, as MethPipe does (the default adds both strands). A job stopped by its
+# walltime goes on where it stopped when it is submitted again with the same values.
 
 set -eo pipefail
 cd "${PBS_O_WORKDIR:-$(pwd)}"
@@ -23,6 +24,7 @@ args=(--sample "${SAMPLE:?Set SAMPLE}" --bam "${bams[@]}" --out_dir "${OUT_DIR:?
 if [ -n "${CN_PANEL:-}" ]; then args+=(--panel "$CN_PANEL"); else args+=(--no_panel); fi
 [ -z "${SEX:-}" ] || args+=(--sex "$SEX")
 [ -z "${BLAST:-}" ] || args+=(--blast_percent "$BLAST")
+[ -z "${STRANDS:-}" ] || args+=(--strands "$STRANDS")
 if [ "${ALIGNER:-dorado}" = dorado ] && command -v "$DORADO" >/dev/null 2>&1; then args+=(--dorado "$DORADO"); fi
 [ -z "${MINIMAP2:-}" ] || args+=(--minimap2 "$MINIMAP2")
 python scripts/run_sample.py "${args[@]}"

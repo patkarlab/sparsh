@@ -18,8 +18,9 @@ left out. The work is done in steps, each in its own folder of --out_dir:
                  modified-base calls (--aligner minimap2 aligns with samtools fastq and minimap2 -y instead). The
                  number of primary records is checked against the input.
   methylation/   modkit pileup --modified-bases 5mC 5hmC --combine-mods --cpg, the command of the laboratory's
-                 MethPipe pipeline, and scripts/bedmethyl_to_csv.py: <sample>.csv, the input of the model, and the pileup,
-                 compressed.
+                 MethPipe pipeline, and scripts/bedmethyl_to_csv.py, which adds the calls of the two strands of each
+                 probe's CpG (--strands forward takes the forward strand alone, as MethPipe does): <sample>.csv, the
+                 input of the model, and the pileup, compressed.
   prediction/    scripts/predict.py with --model_dir.
   copy_number/   reads counted in 100 kb bins (primary alignments with mapping quality 20 or more) and the copy-number
                  call against the stored reference --panel (made with scripts/karyotype.py panel from a counted
@@ -247,7 +248,7 @@ def step_methylation(cfg, runner, out_dir):
     runner.run([cfg["modkit"], "pileup", "--ref", cfg["reference"], "-t", str(cfg["threads"])] + MODKIT_ARGS
                + [out_dir / "bam" / f"{s}.bam", bed])
     runner.run([sys.executable, REPO / "scripts" / "bedmethyl_to_csv.py", "--bedmethyl", bed, "--manifest",
-                cfg["manifest"], "--sample", s, "--out", folder / f"{s}.csv"])
+                cfg["manifest"], "--sample", s, "--out", folder / f"{s}.csv", "--strands", cfg["strands"]])
     with open(bed, "rb") as src, gzip.open(str(bed) + ".gz", "wb") as dst:
         shutil.copyfileobj(src, dst)
     bed.unlink()
@@ -328,6 +329,8 @@ def parse_args():
     p.add_argument("--modkit", default=None)
     p.add_argument("--dorado", default=None)
     p.add_argument("--minimap2", default=None)
+    p.add_argument("--strands", choices=["both", "forward"], default="both",
+                   help="the strands of each CpG behind the model's input: both (default), or forward as MethPipe")
     p.add_argument("--device", default="cpu", help="for the prediction (default cpu)")
     p.add_argument("--redo", choices=STEPS, default=None, help="run this step and the ones after it again")
     return p.parse_args()
@@ -367,17 +370,24 @@ def main() -> int:
            "reference": str(Path(args.reference).resolve()), "manifest": str(Path(args.manifest).resolve()),
            "model_dir": str(Path(args.model_dir).resolve()), "panel": str(Path(args.panel).resolve()) if args.panel
            else None, "sheet": str(sheet) if sheet else None, "threads": args.threads, "aligner": args.aligner,
-           "device": args.device, **tools}
+           "device": args.device, "strands": args.strands, **tools}
+
+    info_path = out_dir / "run_info.json"
+    earlier = json.loads(info_path.read_text()).get("settings", {}) if info_path.exists() else {}
+    if (out_dir / ".methylation.done").exists() and args.redo not in ("bam", "methylation"):
+        made_with = earlier.get("strands", "forward")          # runs made before the option used the forward strand
+        if made_with != args.strands:
+            sys.exit(f"The methylation step of this run was made with --strands {made_with}; give --redo methylation "
+                     f"to make it again with --strands {args.strands}")
 
     if args.redo:
         for step in STEPS[STEPS.index(args.redo):]:
             shutil.rmtree(out_dir / step, ignore_errors=True)
             (out_dir / f".{step}.done").unlink(missing_ok=True)
         (out_dir / f"{args.sample}.report.html").unlink(missing_ok=True)
-    info_path = out_dir / "run_info.json"
     info = json.loads(info_path.read_text()) if info_path.exists() else {"steps": {}}
     info.update({"sample": args.sample, "inputs": cfg["inputs"], "settings": {k: cfg[k] for k in (
-        "reference", "manifest", "model_dir", "panel", "threads", "aligner", "device")}, "tools": tools,
+        "reference", "manifest", "model_dir", "panel", "threads", "aligner", "device", "strands")}, "tools": tools,
         "versions": versions, "sparsh_version": (REPO / "VERSION").read_text().strip()})
     runner = Runner(out_dir / "run.log")
     runner.note(f"run_sample.py {' '.join(shlex.quote(a) for a in sys.argv[1:])}")

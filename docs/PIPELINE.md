@@ -36,15 +36,17 @@ The last step, report, writes the report page with scripts/report.py (docs/REPOR
 
 ## The methylation matrix
 
-The model reads one row per sample with a call of 1 or 0 for every array probe whose CpG the reads cover (docs/NANOPORE.md). scripts/bedmethyl_to_csv.py makes that row from the pileup in the way the laboratory's MethPipe pipeline does, and on test data its files are identical to MethPipe's, byte for byte.
+The model reads one row per sample with a call of 1 or 0 for every array probe whose CpG the reads cover (docs/NANOPORE.md). scripts/bedmethyl_to_csv.py makes that row from the pileup.
 
-modkit reports every CpG with reads, once for each strand, with 5-methylcytosine and 5-hydroxymethylcytosine counted together as modified. The probes come from the manifest: the probe identifier from the column IlmnID, the chromosome from the column CHR, and the position from MAPINFO_37, the GRCh37 position (the column MAPINFO of the v2.0 manifest is the GRCh38 one). Each probe stands for the single base at that position, the C of its CpG on the forward strand, and takes the pileup row that starts there. A probe gets 1 when 50% or more of the calls in that row are modified, and 0 otherwise. The reverse-strand row of the same CpG starts one base later, on the G, and is not used.
+modkit reports every CpG with reads, once for each strand, with 5-methylcytosine and 5-hydroxymethylcytosine counted together as modified. The probes come from the manifest: the probe identifier from the column IlmnID, the chromosome from the column CHR, and the position from MAPINFO_37, the GRCh37 position (the column MAPINFO of the v2.0 manifest is the GRCh38 one). A probe is placed on one base of its CpG, in most cases the C of the forward strand, and the row of the other strand lies one base away.
+
+The calls of the two strands are added: a probe gets 1 when more than half of the calls at its CpG are modified, 0 when fewer than half are, and no value when they are split exactly in half. A CpG is a single site to the model, and its two strands are mostly methylated alike, so adding them puts the reads of both strands behind each call; at the low depth of these runs that roughly doubles the reads behind a call and gives a call at many more of the model's CpGs.
+
+With --strands forward the probe takes the row at its own base alone and gets 1 when 50% or more of its calls are modified. That is the method of intersect_epic.py in the laboratory's MethPipe pipeline, and on test data the files of the two are identical, byte for byte.
 
 The manifest is checked before anything else runs: a file with fewer probe rows than its header declares on the line Loci Count, such as a copy cut short in transfer, is refused, because it would otherwise give matrices with a fraction of the probes and no error.
 
 The columns are named by the probe identifier up to its first underscore, so the replicate probes of one CpG (cg25324105_BC11 and cg25324105_TC21, for example) give two columns with the same name and the same value, and scripts/predict.py combines them.
-
-`--strands both` adds the calls of the two strands of each CpG instead, and calls 1 above one half, 0 below, and leaves out a CpG whose calls are split exactly in half. It roughly doubles the reads behind each call, but MethPipe uses the forward strand alone, so it is not the default; it is there to be evaluated.
 
 ## A stored copy-number reference
 

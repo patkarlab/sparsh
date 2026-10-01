@@ -34,7 +34,7 @@ python scripts/run_sample.py --sample S01 --bam /data/run1/bam_pass/barcode01 --
     --panel cn_panel.tsv.gz --sex F --blast_percent 80
 ```
 
-The steps can also be run on their own, for many samples at once. The model reads one CSV row per sample with a methylation call, 1 or 0, for every array CpG that the reads cover. scripts/bedmethyl_to_csv.py makes it from the output of `modkit pileup --modified-bases 5mC 5hmC --combine-mods --cpg`, with the probe positions of Illumina's manifest of the MethylationEPIC v2.0 array, as the laboratory's MethPipe pipeline makes it:
+The steps can also be run on their own, for many samples at once. The model reads one CSV row per sample with a methylation call, 1 or 0, for every array CpG that the reads cover. scripts/bedmethyl_to_csv.py makes it from the output of `modkit pileup --modified-bases 5mC 5hmC --combine-mods --cpg`, the command of the laboratory's MethPipe pipeline, with the probe positions of Illumina's manifest of the MethylationEPIC v2.0 array, adding the calls of the two strands of each CpG:
 
 ```bash
 modkit pileup --ref hg19_all.fasta --modified-bases 5mC 5hmC --combine-mods --cpg SAMPLE.bam SAMPLE_pileup.bed
