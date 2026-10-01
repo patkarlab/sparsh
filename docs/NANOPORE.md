@@ -6,15 +6,15 @@ This document describes how a nanopore run becomes the input of SPARSH, how scri
 
 The model reads one CSV file per sample, in wide format. The first column holds a row name, and every other column is an array CpG probe ID (cg...) with the methylation value of that CpG, between 0 and 1. SPARSH names each sample after its file. CpGs without reads may be absent, or left empty, NA or NaN. There is exactly one data row. The loader (data/ont.py) refuses anything that would otherwise give a silently wrong prediction: several rows, a file whose first column is already a CpG, values that are not numbers, and values above 1, which are usually percentages. A probe ID that occurs in more than one column is combined by the mean of the copies that have a value, or by the first column only (--duplicate_probes), and the number of such probes is reported.
 
-The released model was trained for one call per covered CpG, 1 when most reads at the CpG are methylated and 0 when most are not (docs/TRAINING.md). To make such a file from a nanopore run, basecall with modified-base calling for 5-methylcytosine, align the reads to GRCh37 (hg19), and summarise the methylation calls per CpG with modkit:
+The released model was trained for one call per covered CpG, 1 when most reads at the CpG are methylated and 0 when most are not (docs/TRAINING.md). scripts/run_sample.py makes such a file from a sample's BAM files as one step of the whole pipeline (docs/PIPELINE.md). On its own, from reads aligned to GRCh37 with their modified-base calls:
 
 ```bash
-modkit pileup SAMPLE.bam SAMPLE.bed --cpg --ref hg19.fa --combine-strands
-python scripts/bedmethyl_to_csv.py --bedmethyl SAMPLE.bed --annotation refs/cpg_annotation_hg19.tsv.gz \
+modkit pileup --ref hg19_all.fasta --modified-bases 5mC 5hmC --combine-mods --cpg SAMPLE.bam SAMPLE_pileup.bed
+python scripts/bedmethyl_to_csv.py --bedmethyl SAMPLE_pileup.bed --manifest EPIC-8v2-0_A2.csv \
     --sample SAMPLE --out samples/SAMPLE.csv
 ```
 
-scripts/bedmethyl_to_csv.py keeps the rows of 5-methylcytosine, adds the reads of the two strands of a CpG together, and finds the array CpGs by the position of their C on the forward strand, taken from the CpG annotation that scripts/cpg_annotation.py builds from Illumina's manifest. It writes 1 or 0 by majority and leaves out a CpG with as many methylated as unmethylated reads; `--values fraction` writes the methylated fraction instead. A compressed bedMethyl file is read as well.
+modkit counts 5-methylcytosine and 5-hydroxymethylcytosine together as modified and reports the two strands of a CpG apart. scripts/bedmethyl_to_csv.py places every probe of Illumina's MethylationEPIC v2.0 manifest at its GRCh37 position (the column MAPINFO_37, with the chromosome of the column CHR), takes the pileup row that starts there, which is the forward strand of the CpG, and writes 1 when 50% or more of its calls are modified and 0 otherwise. It names the columns by the probe identifier up to its first underscore, so the replicate probes of a CpG give columns of the same name, which prediction combines. This is the method of intersect_epic.py in the laboratory's MethPipe pipeline, and on test data the files of the two are identical. A compressed pileup is read as well. `--strands both` adds the two strands of each CpG instead, a variant under evaluation (docs/PIPELINE.md).
 
 Before predicting, scripts/ont_coverage.py reads the files the way prediction will and reports, for each folder, the share of the model's CpGs each sample covers next to the range the model was trained on. It also reports the share of observed values that are exactly 0 or 1, which should be close to 100% for such files, and any repeated probe IDs.
 

@@ -20,6 +20,10 @@ The work is split into steps so that the alignments are read only once:
             figures of the genome and of each chromosome (see
             karyotype/call.py); --no_reference gives a first look at samples
             before a cohort is counted, with GC correction only;
+  panel     store the reference of a counted cohort (the median and spread
+            of its profiles bin by bin, and its thresholds for reading the
+            sex from chromosome Y), so that a single new sample can be
+            called on its own with call --panel (karyotype/panel.py);
   wig       write the counts as readCounter WIG files (1 Mb bins by default),
             to run ichorCNA on the same reads;
   reference rebuild the GC table of the 100 kb bins from a reference FASTA
@@ -137,9 +141,18 @@ def cmd_call(args) -> int:
     counted = list_counted(counts_dir)
     if not counted:
         sys.exit(f"No counted samples in {counts_dir}")
-    if args.no_reference and args.reference_samples:
-        sys.exit("--no_reference and --reference_samples exclude each other")
-    if args.no_reference:
+    if sum(bool(x) for x in (args.no_reference, args.reference_samples, args.panel)) > 1:
+        sys.exit("--no_reference, --reference_samples and --panel exclude each other")
+    panel, sex_thresholds = None, None
+    if args.panel:
+        from karyotype.panel import read_panel
+        from karyotype.reference import load_bin_table
+        try:
+            panel, panel_meta = read_panel(Path(args.panel), load_bin_table(build), build)
+        except (OSError, ValueError, KeyError) as exc:
+            sys.exit(f"--panel: {exc}")
+        sex_thresholds = panel_meta["thresholds"]
+    if args.no_reference or panel is not None:
         ref_names = []
     elif args.reference_samples:
         ref_names = read_names(args.reference_samples)
@@ -152,7 +165,7 @@ def cmd_call(args) -> int:
         sys.exit(f"Not counted in {counts_dir}: {sorted(missing)[:10]}")
     sheet = read_sheet(args.sample_sheet)
     names = list(dict.fromkeys(by_key[safe_name(n).upper()] for n in list(ref_names) + list(to_call)))
-    table, samples = load_cohort(counts_dir, names, build, sheet)
+    table, samples = load_cohort(counts_dir, names, build, sheet, sex_thresholds)
     by_name = {s.name: s for s in samples}
     reference = [by_name[by_key[safe_name(n).upper()]] for n in ref_names]
     calling = [by_name[by_key[safe_name(n).upper()]] for n in to_call]
@@ -173,13 +186,46 @@ def cmd_call(args) -> int:
         print(f"Sex from chromosome Y (read density relative to the autosomes, thresholds from the "
               f"{limits['from']}): female below {limits['female_below']}, male above {limits['male_above']}, "
               "chromosome X in between; samples in the sample sheet keep the sex given there")
-    print(f"Calling {len(calling)} samples ({build}); "
-          f"{'no reference' if not reference else f'reference of {len(reference)} samples'}; bin size "
+    if panel is not None:
+        described = f"stored panel of {next(iter(panel.values())).n_samples} samples"
+    else:
+        described = "no reference" if not reference else f"reference of {len(reference)} samples"
+    print(f"Calling {len(calling)} samples ({build}); {described}; bin size "
           f"{'chosen per sample' if bin_size is None else bin_size}")
     summary = call_cohort(calling, reference, table, build, out_dir, bin_size, args.min_reads, args.max_cn,
-                          purity, plot=not args.no_plots)
+                          purity, plot=not args.no_plots, panel=panel)
     print(f"Written to {out_dir} (karyotype_summary.csv and one set of files per sample); "
           f"{int((summary.get('qc_status') == 'failed').sum()) if 'qc_status' in summary else 0} failed")
+    return 0
+
+
+def cmd_panel(args) -> int:
+    from karyotype.genome import canonical_build
+    from karyotype.normalise import list_counted, load_cohort
+    from karyotype.panel import make_panel, write_panel
+
+    build = canonical_build(args.build)
+    counts_dir, out = Path(args.counts_dir), Path(args.out)
+    if out.exists() and not args.overwrite:
+        sys.exit(f"{out} exists; choose a new --out or pass --overwrite")
+    counted = list_counted(counts_dir)
+    if not counted:
+        sys.exit(f"No counted samples in {counts_dir}")
+    by_key = {safe_name(n).upper(): n for n in counted}
+    wanted = args.samples or counted
+    missing = [n for n in wanted if safe_name(n).upper() not in by_key]
+    if missing:
+        sys.exit(f"Not counted in {counts_dir}: {sorted(missing)[:10]}")
+    names = list(dict.fromkeys(by_key[safe_name(n).upper()] for n in wanted))
+    if len(names) < 10:
+        sys.exit(f"A panel needs at least 10 samples ({len(names)} given); 30 or more is better")
+    table, samples = load_cohort(counts_dir, names, build, read_sheet(args.sample_sheet))
+    frame = make_panel(samples, table)
+    version = (REPO / "VERSION").read_text().strip()
+    meta = write_panel(out, frame, samples, build, version)
+    print(f"Panel of {meta['samples']} samples ({build}, bins of {', '.join(str(s) for s in sorted(set(frame['size'])))} "
+          f"bases) written to {out}; sex from chromosome Y: female below {meta['y_female_below']}, male above "
+          f"{meta['y_male_above']} (from {meta['y_thresholds_from']})")
     return 0
 
 
@@ -248,8 +294,19 @@ def parse_args():
     k.add_argument("--no_plots", action="store_true")
     k.add_argument("--no_reference", action="store_true",
                    help="no reference of other samples: GC correction only, for a first look at a few samples")
+    k.add_argument("--panel", default=None,
+                   help="stored reference made with the panel command, for samples outside its cohort")
     k.add_argument("--overwrite", action="store_true")
     k.set_defaults(func=cmd_call)
+
+    n = sub.add_parser("panel", help="store the reference of a counted cohort, to call single new samples")
+    n.add_argument("--counts_dir", required=True)
+    n.add_argument("--out", required=True, help="panel file to write (.tsv.gz)")
+    n.add_argument("--build", default="hg19")
+    n.add_argument("--samples", nargs="*", default=None, help="samples of the panel (default: every counted sample)")
+    n.add_argument("--sample_sheet", default=None, help="CSV: sample, and optionally sex (F/M)")
+    n.add_argument("--overwrite", action="store_true")
+    n.set_defaults(func=cmd_panel)
 
     w = sub.add_parser("wig", help="write counts as readCounter WIG files, for ichorCNA")
     w.add_argument("--counts_dir", required=True)

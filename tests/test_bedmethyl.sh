@@ -1,7 +1,10 @@
 #!/bin/bash
-# From a modkit bedMethyl file to the one-row CSV that scripts/predict.py reads (scripts/bedmethyl_to_csv.py):
-# strands added together, other modification codes left out, majority calls with ties left out, and the CSV read
-# back with the loader of predict.py. CPU only, a few seconds. Run from the repository folder:
+# From a modkit bedMethyl file to the one-row CSV that scripts/predict.py reads (scripts/bedmethyl_to_csv.py), on a
+# small manifest in the layout of Illumina's MethylationEPIC v2.0 file: GRCh37 positions taken from MAPINFO_37, the
+# forward-strand row used and the reverse-strand row not, calls of 1 from 50% modified up, replicate probes giving
+# columns of one name, chromosome names with and without chr, the two-strand variant (strands added, exact halves left
+# out) on a compressed pileup, and the CSV read back with the loader of predict.py.
+# CPU only, a few seconds. Run from the repository folder:
 #   bash tests/test_bedmethyl.sh
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
@@ -18,43 +21,58 @@ step() {
     fi
 }
 
-printf 'probe\tchrom\tpos\tgenes\tgene_regions\tisland\n' > "$TMP/ann.tsv"
-printf 'cg01\tchr1\t1001\tA\tBody\tIsland\ncg02\tchr1\t2001\t\t\tOpenSea\ncg03\tchr2\t501\t\t\tOpenSea\n' >> "$TMP/ann.tsv"
-printf 'cg04\tchr2\t901\t\t\tOpenSea\ncg05\tchrX\t77\t\t\tOpenSea\n' >> "$TMP/ann.tsv"
-# columns 10-18 separated by spaces, as some modkit versions write them
+# Seven lines before the column names, Windows line ends and a controls section, as in Illumina's file. MAPINFO is
+# the GRCh38 position and must not be used; MAPINFO_37 is the GRCh37 one.
 {
-    printf 'chr1\t1000\t1001\tm\t3\t+\t1000\t1001\t255,0,0\t3 66.67 2 1 0 0 0 0 0\n'     # cg01 plus strand: 2 of 3
-    printf 'chr1\t1001\t1002\tm\t2\t-\t1001\t1002\t255,0,0\t2 50.00 1 1 0 0 0 0 0\n'     # cg01 minus strand: 1 of 2
-    printf 'chr1\t1000\t1001\th\t3\t+\t1000\t1001\t255,0,0\t3 33.33 1 2 0 0 0 0 0\n'     # 5hmC row: not used
-    printf 'chr1\t2000\t2001\tm\t2\t.\t2000\t2001\t255,0,0\t2 50.00 1 1 0 0 0 0 0\n'     # cg02: a tie
-    printf 'chr2\t500\t501\tm\t1\t.\t500\t501\t255,0,0\t1 0.00 0 1 0 0 0 0 0\n'          # cg03: unmethylated
-    printf 'chr2\t700\t701\tm\t4\t.\t700\t701\t255,0,0\t4 100.00 4 0 0 0 0 0 0\n'        # not an array CpG
-    printf '2\t900\t901\tm\t5\t.\t900\t901\t255,0,0\t5 100.00 5 0 0 0 0 0 0\n'           # cg04, no chr prefix
-} | gzip > "$TMP/sample.bed.gz"
+    printf 'Illumina, Inc.,,\r\n[Heading],,\r\nDescriptor File Name,EPIC-8v2-0_A2.bpm,\r\nAssay Format,Infinium,\r\n'
+    printf 'Date Manufactured,1/1/2023,\r\nLoci Count ,6,\r\n[Assay],,\r\n'
+    printf 'IlmnID,Name,CHR,MAPINFO,Genome_Build,CHR_37,MAPINFO_37\r\n'
+    printf 'cg01_BC11,cg01,1,99001,GRCh38,1,1001\r\n'          # forward C at 1001: plus-strand row at 1000
+    printf 'cg02_TC21,cg02,1,99002,GRCh38,1,2001\r\n'          # a tie: 50%% gives 1
+    printf 'cg03_BC11,cg03,2,99003,GRCh38,2,501\r\n'           # unmethylated
+    printf 'cg04_BC11,cg04,2,99004,GRCh38,2,901\r\n'           # two replicate probes of one CpG
+    printf 'cg04_BC21,cg04,2,99004,GRCh38,2,901\r\n'
+    printf 'cg05_BC11,cg05,X,99005,GRCh38,X,\r\n'              # no GRCh37 position: left out
+    printf 'cg06_BC11,cg06,1,1001,GRCh38,1,3001\r\n'           # its GRCh38 position matches a row: must not be used
+    printf 'cg07_BC11,cg07,1,99007,GRCh38,1,4002\r\n'          # a probe placed on the G of its CpG
+    printf '[Controls],,,\r\n21630339,STAINING,Red,DNP (High)\r\n'
+} > "$TMP/manifest.csv"
+{
+    printf 'chr1\t1000\t1001\tC\t3\t+\t1000\t1001\t255,0,0\t3\t66.67\t2\t1\t0\t0\t0\t0\t0\n'     # cg01: 1
+    printf 'chr1\t1001\t1002\tC\t2\t-\t1001\t1002\t255,0,0\t2\t0.00\t0\t2\t0\t0\t0\t0\t0\n'      # reverse strand
+    printf 'chr1\t2000\t2001\tC\t2\t+\t2000\t2001\t255,0,0\t2\t50.00\t1\t1\t0\t0\t0\t0\t0\n'     # cg02: 1
+    printf '2\t500\t501\tC\t1\t+\t500\t501\t255,0,0\t1\t0.00\t0\t1\t0\t0\t0\t0\t0\n'            # cg03: 0
+    printf '2\t700\t701\tC\t4\t+\t700\t701\t255,0,0\t4\t100.00\t4\t0\t0\t0\t0\t0\t0\n'          # not a probe
+    printf '2\t900\t901\tC\t5\t+\t900\t901\t255,0,0\t5\t80.00\t4\t1\t0\t0\t0\t0\t0\n'           # cg04: 1, twice
+    printf 'chr1\t4000\t4001\tC\t2\t+\t4000\t4001\t255,0,0\t2\t100.00\t2\t0\t0\t0\t0\t0\t0\n'   # C of cg07's CpG
+    printf 'chr1\t4001\t4002\tC\t1\t-\t4001\t4002\t255,0,0\t1\t0.00\t0\t1\t0\t0\t0\t0\t0\n'     # cg07: 0
+} > "$TMP/S1_pileup.bed"
+printf ',cg01,cg02,cg03,cg04,cg04,cg07\nS1,1,1,0,1,1,0\n' > "$TMP/expected.csv"
+# both strands added: cg01 2 of 5 gives 0, cg02 1 of 2 is left out, cg07 2 of 3 gives 1
+printf ',cg01,cg03,cg04,cg04,cg07\nS1,0,0,1,1,1\n' > "$TMP/expected_both.csv"
 
-step binary   "$PYTHON" scripts/bedmethyl_to_csv.py --bedmethyl "$TMP/sample.bed.gz" --annotation "$TMP/ann.tsv" \
-                  --sample S1 --out "$TMP/S1.csv"
-step fraction "$PYTHON" scripts/bedmethyl_to_csv.py --bedmethyl "$TMP/sample.bed.gz" --annotation "$TMP/ann.tsv" \
-                  --sample S1 --out "$TMP/S1_fraction.csv" --values fraction
-# modkit writes plain text unless asked to compress, whatever the file is called; the reader goes by the content
-zcat "$TMP/sample.bed.gz" > "$TMP/plain.bed.gz"
-step plain    "$PYTHON" scripts/bedmethyl_to_csv.py --bedmethyl "$TMP/plain.bed.gz" --annotation "$TMP/ann.tsv" \
-                  --sample S1 --out "$TMP/new_folder/S1_plain.csv"
-step refuse_existing bash -c "! '$PYTHON' scripts/bedmethyl_to_csv.py --bedmethyl '$TMP/sample.bed.gz' \
-                  --annotation '$TMP/ann.tsv' --sample S1 --out '$TMP/S1.csv' > /dev/null 2>&1"
-step contents "$PYTHON" - "$TMP" <<'PY'
+step convert  "$PYTHON" scripts/bedmethyl_to_csv.py --bedmethyl "$TMP/S1_pileup.bed" --manifest "$TMP/manifest.csv" \
+                  --sample S1 --out "$TMP/out/S1.csv"
+step exact    cmp "$TMP/out/S1.csv" "$TMP/expected.csv"
+gzip -c "$TMP/S1_pileup.bed" > "$TMP/S1_pileup.bed.gz"
+step both     "$PYTHON" scripts/bedmethyl_to_csv.py --bedmethyl "$TMP/S1_pileup.bed.gz" --manifest "$TMP/manifest.csv" \
+                  --sample S1 --out "$TMP/out/S1_both.csv" --strands both
+step exact_both cmp "$TMP/out/S1_both.csv" "$TMP/expected_both.csv"
+step refuse_existing bash -c "! '$PYTHON' scripts/bedmethyl_to_csv.py --bedmethyl '$TMP/S1_pileup.bed' \
+                  --manifest '$TMP/manifest.csv' --sample S1 --out '$TMP/out/S1.csv' > /dev/null 2>&1"
+# columns 10-18 separated by spaces (modkit pileup --header) are refused rather than read as zeros
+awk -F'\t' 'BEGIN {OFS = "\t"} {s = $10; for (i = 11; i <= NF; i++) s = s " " $i; print $1, $2, $3, $4, $5, $6, $7, $8, $9, s}' \
+    "$TMP/S1_pileup.bed" > "$TMP/spaces.bed"
+step refuse_spaces bash -c "! '$PYTHON' scripts/bedmethyl_to_csv.py --bedmethyl '$TMP/spaces.bed' \
+                  --manifest '$TMP/manifest.csv' --sample S1 --out '$TMP/out/spaces.csv' > '$TMP/spaces.log' 2>&1 \
+                  && grep -q 'separated by spaces, as modkit writes them' '$TMP/spaces.log'"
+step loader "$PYTHON" - "$TMP" <<'PY'
 import sys
 import numpy as np
 from data.ont import read_ont_csv
-tmp = sys.argv[1]
-cpgs = ["cg01", "cg02", "cg03", "cg04", "cg05"]
-x, info = read_ont_csv(f"{tmp}/S1.csv", cpgs)
-assert np.array_equal(x[[0, 2, 3]], [1.0, 0.0, 1.0]) and np.isnan(x[1]) and np.isnan(x[4]), x   # 3 of 5 reads at cg01
-assert info["n_observed"] == 3, info
-p, _ = read_ont_csv(f"{tmp}/new_folder/S1_plain.csv", cpgs)
-assert np.array_equal(p, x, equal_nan=True), p
-f, _ = read_ont_csv(f"{tmp}/S1_fraction.csv", cpgs)
-assert np.allclose(f[:4], [0.6, 0.5, 0.0, 1.0]) and np.isnan(f[4]), f
-print("contents ok")
+x, info = read_ont_csv(f"{sys.argv[1]}/out/S1.csv", ["cg01", "cg02", "cg03", "cg04", "cg05", "cg06", "cg07"])
+assert np.array_equal(x[[0, 1, 2, 3, 6]], [1.0, 1.0, 0.0, 1.0, 0.0]) and np.isnan(x[4]) and np.isnan(x[5]), x
+assert info["n_observed"] == 5 and info["n_repeated_probes"] == 1, info
+print("loader ok")
 PY
 echo "BEDMETHYL TEST PASSED"

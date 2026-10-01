@@ -47,6 +47,24 @@ else
 fi
 echo "         Classes left out by scripts/check_data.py: ${EXCLUDE_PREFIXES:-none}"
 
+# the single-sample pipeline (jobs/run_sample.pbs); not needed for training
+echo "Single-sample pipeline:"
+report_file REFERENCE_FASTA "$REFERENCE_FASTA" no
+[ -z "$REFERENCE_FASTA" ] || [ -f "$REFERENCE_FASTA.fai" ] || {
+    echo "PROBLEM  $REFERENCE_FASTA.fai does not exist: index the reference with samtools faidx"
+    problems=$((problems + 1)); }
+report_file EPIC_MANIFEST "$EPIC_MANIFEST" no
+report_file "PIPELINE_MODEL (config.json)" "${PIPELINE_MODEL:+$PIPELINE_MODEL/config.json}" no
+report_file CN_PANEL "$CN_PANEL" no
+for t in SAMTOOLS MODKIT DORADO; do
+    path=$(command -v "${!t}" 2>/dev/null)
+    if [ -n "$path" ]; then
+        echo "ok       $t = $path ($("$path" --version 2>&1 | head -1))"
+    else
+        echo "note     $t = ${!t} not found$([ $t = DORADO ] && echo '; needed only for reads not yet aligned')"
+    fi
+done
+
 if [ "$problems" -eq 0 ]; then
     echo "SETTINGS OK"
 else

@@ -29,6 +29,16 @@ step fixed_bins "$PYTHON" scripts/karyotype.py call --counts_dir "$TMP/counts" -
 mkdir -p "$TMP/one" && cp "$TMP"/counts/CASE_AML_F.counts.* "$TMP/one/"
 step one_sample "$PYTHON" scripts/karyotype.py call --counts_dir "$TMP/one" --out_dir "$TMP/calls_one" --no_reference
 step wig "$PYTHON" scripts/karyotype.py wig --counts_dir "$TMP/counts" --out_dir "$TMP/wig" --samples CASE_T21_M
+# a stored panel from the background samples only, and the named cases, which are not in it, called against it
+ls "$TMP/counts" | sed -n 's/^\(BG[0-9]*\)\.counts\.json$/\1/p' > "$TMP/background.txt"
+mapfile -t BACKGROUND < "$TMP/background.txt"
+step panel "$PYTHON" scripts/karyotype.py panel --counts_dir "$TMP/counts" --out "$TMP/panel.tsv.gz" \
+              --samples "${BACKGROUND[@]}" --sample_sheet "$TMP/sheet.csv"
+step call_panel "$PYTHON" scripts/karyotype.py call --counts_dir "$TMP/counts" --out_dir "$TMP/calls_panel" \
+              --panel "$TMP/panel.tsv.gz" --samples CASE_T21_M CASE_HYPER_F CASE_AML_F CASE_LOY_M CASE_NORMAL_F \
+              CASE_NORMAL_M --sample_sheet "$TMP/sheet.csv" --no_plots
+step refuse_two_references bash -c "! '$PYTHON' scripts/karyotype.py call --counts_dir '$TMP/counts' \
+              --out_dir '$TMP/calls_bad' --panel '$TMP/panel.tsv.gz' --no_reference > /dev/null 2>&1"
 step contents "$PYTHON" - "$TMP" <<'PY'
 import json, sys
 from pathlib import Path
@@ -136,6 +146,23 @@ hap = line({**{f"chr{k}": 1 for k in range(1, 23) if k not in (10, 14, 18, 21)},
 assert hap["karyotype"] == "27<1n>,X,+10,+14,+18,+21" and hap["ploidy_class"] == "near-haploid", hap
 tri = line({**{f"chr{k}": 3 for k in range(1, 23)}, "chrX": 3, "chr7": 2})
 assert tri["karyotype"] == "68<3n>,XXX,-7" and tri["ploidy_class"] == "near-triploid", tri
+
+# called against the stored panel of the 36 background samples, the cases give the cohort's answers
+panel_calls = tmp / "calls_panel"
+for name in ("CASE_T21_M", "CASE_HYPER_F", "CASE_NORMAL_F", "CASE_NORMAL_M"):
+    d = json.load(open(panel_calls / f"{name}.karyotype.json"))
+    assert (d["iscn"], d["karyotype"]) == expect[name], (name, d["iscn"], d["karyotype"])
+    assert d["qc"]["reference"] == "stored panel panel.tsv.gz" and d["qc"]["reference_samples"] == 36, d["qc"]
+    assert "stored reference panel of 36 samples" in d["method"], d["method"]
+aml_p = json.load(open(panel_calls / "CASE_AML_F.karyotype.json"))
+assert "(7)x1" in aml_p["iscn"] and "(8)x3" in aml_p["iscn"], aml_p["iscn"]
+loy_p = json.load(open(panel_calls / "CASE_LOY_M.karyotype.json"))
+assert "(Y)x0" in loy_p["iscn"] and loy_p["sex_source"] == "sample sheet", loy_p["iscn"]
+normal_m = json.load(open(panel_calls / "CASE_NORMAL_M.karyotype.json"))
+assert normal_m["sex"] == "XY" and normal_m["qc"]["y_density_thresholds"]["from"].startswith("reference panel")
+import gzip
+text = gzip.open(tmp / "panel.tsv.gz", "rt").read()
+assert "BG0" not in text and "CASE" not in text, "the panel must hold no sample names"
 print("contents ok")
 PY
 echo "KARYOTYPE CALL TEST PASSED"

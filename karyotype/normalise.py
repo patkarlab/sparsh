@@ -233,18 +233,27 @@ def cohort_y_threshold(values: List[float], min_samples: int = 10, min_separatio
     return float(10 ** ((lo + hi) / 2.0))
 
 
-def assign_sex(samples: List[Sample], table: pd.DataFrame) -> Optional[float]:
+def y_thresholds(values: List[float]) -> dict:
+    """Thresholds on the Y density: from the samples' own two groups when they show them, else the fixed ones."""
+    threshold = cohort_y_threshold(values)
+    male, female = (threshold * Y_MARGIN, threshold / Y_MARGIN) if threshold else (Y_MALE, Y_FEMALE)
+    return {"female_below": round(female, 4), "male_above": round(male, 4),
+            "from": "cohort" if threshold else "fixed values"}
+
+
+def assign_sex(samples: List[Sample], table: pd.DataFrame, thresholds: Optional[dict] = None) -> dict:
     """
-    Set the sex of every sample the sample sheet has not given, from its Y and X densities. Returns the cohort
-    threshold on the Y density, or None when the fixed thresholds were used.
+    Set the sex of every sample the sample sheet has not given, from its Y and X densities. The thresholds on the Y
+    density come from the samples whose sex is not given, unless `thresholds` (female_below, male_above, from)
+    gives them, as a stored reference panel does. Returns the thresholds used.
     """
     for s in samples:
         s.meta["y_density"], s.meta["x_density"] = sex_measures(s, table)
-    threshold = cohort_y_threshold([s.meta["y_density"] for s in samples if not s.sex])
-    male, female = (threshold * Y_MARGIN, threshold / Y_MARGIN) if threshold else (Y_MALE, Y_FEMALE)
+    if thresholds is None:
+        thresholds = y_thresholds([s.meta["y_density"] for s in samples if not s.sex])
+    male, female = thresholds["male_above"], thresholds["female_below"]
     for s in samples:
-        s.meta["y_density_thresholds"] = {"female_below": round(female, 4), "male_above": round(male, 4),
-                                          "from": "cohort" if threshold else "fixed values"}
+        s.meta["y_density_thresholds"] = dict(thresholds)
         if s.sex:
             continue
         y, x = s.meta["y_density"], s.meta["x_density"]
@@ -268,7 +277,7 @@ def assign_sex(samples: List[Sample], table: pd.DataFrame) -> Optional[float]:
             s.sex, s.sex_source = "XX", "inferred from chromosome X (some reads on Y)"
             s.warnings.append("Some reads on chromosome Y but two X chromosomes: the sex was read as female; give "
                               "it in the sample sheet if this is a man with an extra X.")
-    return threshold
+    return thresholds
 
 
 def normal_copies(chrom: str, sex: str) -> int:
@@ -308,6 +317,21 @@ class Reference:
             spread = np.nanmedian(np.abs(np.log2(m / median)), axis=0) * 1.4826
         median[n < min_samples] = np.nan
         return median, spread, int(keep.sum())
+
+
+class PanelReference:
+    """
+    A stored reference (karyotype/panel.py): the median and spread of a cohort's reference profiles bin by bin,
+    made once and used for samples outside that cohort, so that a single new sample can be called. The sample
+    being called is not left out of it, so it should not be one of the samples the panel was made from.
+    """
+
+    def __init__(self, size: int, median: np.ndarray, spread: np.ndarray, n_samples: int, source: str = ""):
+        self.size, self.median, self.spread, self.n_samples, self.source = size, median, spread, n_samples, source
+        self.samples: List[str] = []
+
+    def for_sample(self, name: str, min_samples: int = 5) -> Tuple[np.ndarray, np.ndarray, int]:
+        return self.median.copy(), self.spread.copy(), self.n_samples
 
 
 class FlatReference:
@@ -374,8 +398,8 @@ def robust_noise(values: np.ndarray) -> float:
     return float(np.median(np.abs(d - np.median(d))) * 1.4826 / np.sqrt(2.0))
 
 
-def load_cohort(counts_dir: Path, names: Optional[List[str]], build: str,
-                sheet: Optional[pd.DataFrame] = None) -> Tuple[pd.DataFrame, List[Sample]]:
+def load_cohort(counts_dir: Path, names: Optional[List[str]], build: str, sheet: Optional[pd.DataFrame] = None,
+                sex_thresholds: Optional[dict] = None) -> Tuple[pd.DataFrame, List[Sample]]:
     table = load_bin_table(build)
     names = names or list_counted(counts_dir)
     samples = []
@@ -392,5 +416,5 @@ def load_cohort(counts_dir: Path, names: Optional[List[str]], build: str,
                     raise ValueError(f"sample sheet: sex {row.iloc[0]['sex']!r} for {s.name} is not F or M")
                 s.sex_source = "sample sheet"
         samples.append(s)
-    assign_sex(samples, table)
+    assign_sex(samples, table, sex_thresholds)
     return table, samples

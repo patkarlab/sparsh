@@ -31,8 +31,8 @@ from .fit import ALTERNATIVE, CLOSE, MIN_CHANGE_Z, MODEL_ERROR, explain_all, fit
 from .genome import ASSEMBLY_NAME, AUTOSOMES, LENGTHS, load_bands
 from .lesions import lesion_flags
 from .nomenclature import arm_table, describe
-from .normalise import (BIN_SIZES, Bins, FlatReference, Reference, Sample, build_reference, choose_bin_size,
-                        make_bins, normal_copies, robust_noise, sample_log_ratio)
+from .normalise import (BIN_SIZES, Bins, FlatReference, PanelReference, Reference, Sample, build_reference,
+                        choose_bin_size, make_bins, normal_copies, robust_noise, sample_log_ratio)
 from .plot import plot_chromosomes, plot_genome
 from .reference import load_genes
 from .segment import segment_genome
@@ -41,6 +41,8 @@ METHOD = ("Reads with a mapping quality of 20 or more were counted in genomic bi
           "for GC content and divided by the median profile of the other samples of the cohort, segmented by "
           "circular binary segmentation, and fitted with integer copy numbers, a leukaemic fraction and a "
           "baseline ploidy. Balanced rearrangements and changes smaller than a few bins are not seen.")
+METHOD_PANEL = METHOD.replace("the median profile of the other samples of the cohort",
+                              "the median profile of a stored reference panel of {n} samples sequenced the same way")
 
 
 HYPODIPLOID = {"near-haploid", "low hypodiploid", "high hypodiploid"}
@@ -168,7 +170,8 @@ def call_sample(sample: Sample, bins_by_size: Dict[int, Bins], references: Dict[
         notes.append("No change away from the baseline was found, so the leukaemic fraction cannot be "
                      "estimated from copy number; a leukaemia without copy-number changes and a sample with few "
                      "leukaemic cells look the same.")
-    if isinstance(references[size], FlatReference):
+    reference = references[size]
+    if isinstance(reference, FlatReference):
         status = "no reference"
         notes.append("Called without a reference of other samples: only GC content was corrected, so artefacts of "
                      "mappability and of the library may remain, and chromosome Y was not assessed. For a first "
@@ -196,6 +199,8 @@ def call_sample(sample: Sample, bins_by_size: Dict[int, Bins], references: Dict[
             "segments": int(len(seg)),
             "bins_used": info.get("bins_used"),
             "reference_samples": info.get("reference_samples"),
+            "reference": ("stored panel " + reference.source) if isinstance(reference, PanelReference) else
+                         ("none" if isinstance(reference, FlatReference) else "the other samples of the cohort"),
             "reads_counted": sample.meta.get("reads_counted"),
             "read_length_median": (sample.meta.get("read_length") or {}).get("median"),
             "detection_limit": {
@@ -207,7 +212,7 @@ def call_sample(sample: Sample, bins_by_size: Dict[int, Bins], references: Dict[
             "x_density": _rounded(sample.meta.get("x_density"), 3),
             "y_density_thresholds": sample.meta.get("y_density_thresholds"),
         },
-        "method": METHOD,
+        "method": METHOD_PANEL.format(n=reference.n_samples) if isinstance(reference, PanelReference) else METHOD,
         "created": time.strftime("%Y-%m-%dT%H:%M:%S"),
     })
     for key in ("5 Mb", "20 Mb"):
@@ -266,19 +271,29 @@ def write_reference(out_dir: Path, size: int, reference: Reference, bins: Bins) 
 
 def call_cohort(samples: List[Sample], reference_samples: List[Sample], table: pd.DataFrame, build: str,
                 out_dir: Path, bin_size: Optional[int] = None, min_reads: float = 60, max_cn: int = 8,
-                purity: Optional[Dict[str, tuple]] = None, plot: bool = True, log=print) -> pd.DataFrame:
+                purity: Optional[Dict[str, tuple]] = None, plot: bool = True, log=print,
+                panel: Optional[Dict[int, PanelReference]] = None) -> pd.DataFrame:
+    """
+    Call every sample of `samples` against the leave-one-out reference of `reference_samples`, or against the
+    stored references of `panel` (karyotype/panel.py) when it is given, or with no reference at all.
+    """
     bands = load_bands(build)
     genes = load_genes(build)
     sizes = [bin_size] if bin_size else list(BIN_SIZES)
     bins_by_size = {s: make_bins(table, s) for s in sizes}
     references = {}
     for s in sizes:
-        if reference_samples:
+        if panel is not None:
+            references[s] = panel[s]
+        elif reference_samples:
             references[s] = build_reference(s, reference_samples, bins_by_size[s])
             write_reference(out_dir, s, references[s], bins_by_size[s])
         else:
             references[s] = FlatReference(s, bins_by_size[s])
-    if reference_samples:
+    if panel is not None:
+        first = panel[sizes[0]]
+        log(f"Reference: the stored panel {first.source}, made from {first.n_samples} samples")
+    elif reference_samples:
         log(f"Reference: {len(reference_samples)} samples at bin sizes "
             f"{', '.join(f'{s // 1000} kb' for s in sizes)}")
     else:

@@ -1,13 +1,14 @@
 #!/bin/bash
 # Runs every test one after the other and prints a summary. Each test works on synthetic data in a temporary
-# folder, on the CPU. The counting test is skipped without samtools, the tuning test without Optuna, and the
-# region maps of the figures test without R and DMRcate (RSCRIPT, see envs/figures_r.yml). Run from anywhere:
+# folder, on the CPU. The counting test is skipped without samtools, the pipeline test without samtools and modkit
+# (and its alignment steps without minimap2 or dorado), the tuning test without Optuna, and the region maps of the
+# figures test without R and DMRcate (RSCRIPT, see envs/figures_r.yml). Run from anywhere:
 #   bash tests/run_all.sh
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 
 tests=(test_bedmethyl test_training test_options test_data_preparation test_tuning test_report
-       test_karyotype_count test_karyotype_call test_figures)
+       test_karyotype_count test_karyotype_call test_pipeline test_figures)
 passed=() partly=() skipped=() failed=()
 start=$SECONDS
 for t in "${tests[@]}"; do

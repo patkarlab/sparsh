@@ -12,7 +12,7 @@ The classifier is in data/, models/, training/ and evaluation/, with scripts/tra
 
 ## Installation
 
-SPARSH needs Python 3.10 to 3.12 with PyTorch, NumPy, pandas, SciPy, scikit-learn and matplotlib. The copy-number step also needs samtools, and the region analysis of the figures needs R with DMRcate (envs/figures_r.yml).
+SPARSH needs Python 3.10 to 3.12 with PyTorch, NumPy, pandas, SciPy, scikit-learn and matplotlib. Working from a sample's reads also needs samtools and modkit, and dorado or minimap2 for reads that are not yet aligned; the copy-number step needs samtools; and the region analysis of the figures needs R with DMRcate (envs/figures_r.yml).
 
 ```bash
 git clone https://github.com/patkarlab/sparsh.git
@@ -26,13 +26,19 @@ The tests run every part on synthetic data, on the CPU, in about ten minutes, an
 
 ## Classifying nanopore samples
 
-A nanopore run is basecalled with modified-base calling for 5-methylcytosine, aligned to GRCh37 (hg19), and summarised per CpG with `modkit pileup`. scripts/bedmethyl_to_csv.py turns the resulting bedMethyl file into the one-row CSV that SPARSH reads, with one methylation call for every array CpG that the reads cover. It needs the CpG annotation that scripts/cpg_annotation.py makes from Illumina's manifest of the MethylationEPIC array.
+scripts/run_sample.py takes one sample from its BAM files, aligned or not, to its report page: it aligns the reads to GRCh37 when needed, summarises their methylation calls per CpG with modkit, makes the model's input, predicts, calls copy number from the same reads, and writes the report. A stopped run goes on where it stopped. docs/PIPELINE.md describes it.
 
 ```bash
-python scripts/cpg_annotation.py --manifest infinium-methylationepic-v-1-0-b5-manifest-file.csv \
-    --out refs/cpg_annotation_hg19.tsv.gz
-modkit pileup SAMPLE.bam SAMPLE.bed --cpg --ref hg19.fa --combine-strands
-python scripts/bedmethyl_to_csv.py --bedmethyl SAMPLE.bed --annotation refs/cpg_annotation_hg19.tsv.gz \
+python scripts/run_sample.py --sample S01 --bam /data/run1/bam_pass/barcode01 --out_dir results/S01 \
+    --reference hg19_all.fasta --manifest EPIC-8v2-0_A2.csv --model_dir /path/to/v04_labels \
+    --panel cn_panel.tsv.gz --sex F --blast_percent 80
+```
+
+The steps can also be run on their own, for many samples at once. The model reads one CSV row per sample with a methylation call, 1 or 0, for every array CpG that the reads cover. scripts/bedmethyl_to_csv.py makes it from the output of `modkit pileup --modified-bases 5mC 5hmC --combine-mods --cpg`, with the probe positions of Illumina's manifest of the MethylationEPIC v2.0 array, as the laboratory's MethPipe pipeline makes it:
+
+```bash
+modkit pileup --ref hg19_all.fasta --modified-bases 5mC 5hmC --combine-mods --cpg SAMPLE.bam SAMPLE_pileup.bed
+python scripts/bedmethyl_to_csv.py --bedmethyl SAMPLE_pileup.bed --manifest EPIC-8v2-0_A2.csv \
     --sample SAMPLE --out samples/SAMPLE.csv
 python scripts/predict.py --model_dir /path/to/v04_labels --ont_dir samples --output_dir predictions/batch1
 python scripts/report.py --predictions_dir predictions/batch1 --model_dir /path/to/v04_labels \
@@ -43,7 +49,7 @@ Here /path/to/v04_labels is the folder of the released model, which is not publi
 
 ## Copy-number karyotype
 
-The reads of the same run give read depth along the genome. scripts/karyotype.py counts reads in 100 kb bins, streaming each BAM file once. It then corrects each sample for GC content and divides it by the median profile of the other samples of the cohort. Finally it segments the genome, fits integer copy numbers with the leukaemic fraction and the baseline ploidy, and writes the result in ISCN 2024 notation for shallow sequencing, for example `sseq[GRCh37] (X)x3,(4,6,10,14,17,18)x3,(21)x4`. It also writes a karyotype line (`55,XX,+X,+4,+6,+10,+14,+17,+18,+21,+21`), flags for lesions that matter in acute leukaemia (high hyperdiploidy, a doubled hypodiploid clone, intrachromosomal amplification of chromosome 21, the losses that count towards acute myeloid leukaemia with myelodysplasia-related changes, loss of CDKN2A), and figures of the genome and of each chromosome for review by eye. With `--karyotype_dir`, the report shows all of this next to the classification. docs/COPY_NUMBER.md describes the method and its limits.
+The reads of the same run give read depth along the genome. scripts/karyotype.py counts reads in 100 kb bins, streaming each BAM file once. It then corrects each sample for GC content and divides it by the median profile of the other samples of the cohort, or, for a single new sample, by a stored reference made once from such a cohort. Finally it segments the genome, fits integer copy numbers with the leukaemic fraction and the baseline ploidy, and writes the result in ISCN 2024 notation for shallow sequencing, for example `sseq[GRCh37] (X)x3,(4,6,10,14,17,18)x3,(21)x4`. It also writes a karyotype line (`55,XX,+X,+4,+6,+10,+14,+17,+18,+21,+21`), flags for lesions that matter in acute leukaemia (high hyperdiploidy, a doubled hypodiploid clone, intrachromosomal amplification of chromosome 21, the losses that count towards acute myeloid leukaemia with myelodysplasia-related changes, loss of CDKN2A), and figures of the genome and of each chromosome for review by eye. With `--karyotype_dir`, the report shows all of this next to the classification. docs/COPY_NUMBER.md describes the method and its limits.
 
 ## Training a model
 
@@ -72,7 +78,7 @@ evaluation/  metrics, evaluation conditions, the reporting hierarchy, shown clas
 karyotype/   read counting, normalisation, segmentation, copy-number fit and ISCN nomenclature
 report/      the per-case HTML reports
 figures/     the figures of the training arrays, with the R script for the region analysis
-scripts/     command-line tools
+scripts/     command-line tools, among them run_sample.py, the whole pipeline for one sample
 jobs/        batch jobs for a PBS cluster; jobs/settings.sh holds the paths
 tests/       synthetic data and a test for every part
 docs/        documentation
