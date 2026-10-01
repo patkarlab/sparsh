@@ -4,7 +4,8 @@
 # forward-strand row used and the reverse-strand row not, calls of 1 from 50% modified up, replicate probes giving
 # columns of one name, chromosome names with and without chr, the two-strand variant (strands added, exact halves left
 # out) on a compressed pileup, and the CSV read back with the loader of predict.py.
-# CPU only, a few seconds. Run from the repository folder:
+# A manifest with fewer probe rows than it declares is refused. CPU only, a few seconds. Run from the repository
+# folder:
 #   bash tests/test_bedmethyl.sh
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
@@ -60,6 +61,11 @@ step both     "$PYTHON" scripts/bedmethyl_to_csv.py --bedmethyl "$TMP/S1_pileup.
 step exact_both cmp "$TMP/out/S1_both.csv" "$TMP/expected_both.csv"
 step refuse_existing bash -c "! '$PYTHON' scripts/bedmethyl_to_csv.py --bedmethyl '$TMP/S1_pileup.bed' \
                   --manifest '$TMP/manifest.csv' --sample S1 --out '$TMP/out/S1.csv' > /dev/null 2>&1"
+# a manifest cut short in transfer, with fewer probe rows than its Loci Count line declares, is refused
+head -n 12 "$TMP/manifest.csv" > "$TMP/manifest_cut.csv"
+step refuse_incomplete_manifest bash -c "! '$PYTHON' scripts/bedmethyl_to_csv.py --bedmethyl '$TMP/S1_pileup.bed' \
+                  --manifest '$TMP/manifest_cut.csv' --sample S1 --out '$TMP/out/cut.csv' > '$TMP/cut.log' 2>&1 \
+                  && grep -q 'the file is incomplete' '$TMP/cut.log' && [ ! -e '$TMP/out/cut.csv' ]"
 # columns 10-18 separated by spaces (modkit pileup --header) are refused rather than read as zeros
 awk -F'\t' 'BEGIN {OFS = "\t"} {s = $10; for (i = 11; i <= NF; i++) s = s " " $i; print $1, $2, $3, $4, $5, $6, $7, $8, $9, s}' \
     "$TMP/S1_pileup.bed" > "$TMP/spaces.bed"

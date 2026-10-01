@@ -62,6 +62,11 @@ step refuse_unaligned_without_aligner bash -c "! env -u DORADO PATH=/usr/bin:/bi
     --sample S_NONE --bam '$TMP/in/unaligned.bam' --out_dir '$TMP/out/S_NONE' --reference '$TMP/in/ref.fa' \
     --manifest '$TMP/in/manifest.csv' --model_dir '$TMP/model' --no_panel --samtools '$SAMTOOLS' --modkit '$MODKIT' \
     > '$TMP/none.log' 2>&1 && grep -q 'dorado was not found' '$TMP/none.log'"
+head -n 100 "$TMP/in/manifest.csv" > "$TMP/in/manifest_cut.csv"
+step refuse_incomplete_manifest bash -c "! '$PYTHON' scripts/run_sample.py --sample S_CUT --bam '$TMP/in/reads.bam' \
+    --out_dir '$TMP/out/S_CUT' --reference '$TMP/in/ref.fa' --manifest '$TMP/in/manifest_cut.csv' \
+    --model_dir '$TMP/model' --no_panel --samtools '$SAMTOOLS' --modkit '$MODKIT' > '$TMP/cut.log' 2>&1 \
+    && grep -q 'the file is incomplete' '$TMP/cut.log' && [ ! -e '$TMP/out/S_CUT/.bam.done' ]"
 run S_SORTED dorado "$TMP/in/reads.bam" --sex F --blast_percent 70 > "$TMP/again.log" 2>&1
 step not_redone test "$(grep -c 'done before' "$TMP/again.log")" -eq 5
 run S_SORTED dorado "$TMP/in/reads.bam" --sex F --blast_percent 70 --redo report > "$TMP/redo.log" 2>&1

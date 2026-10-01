@@ -108,7 +108,9 @@ def version(path, name):
     except (OSError, subprocess.TimeoutExpired):
         return None
     text = (out.stdout + out.stderr).strip()
-    m = re.search(r"(\d+\.\d+(?:\.\d+)?)", text)
+    # a log line may come first; its date and time are not the version
+    clean = re.sub(r"\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?", " ", text)
+    m = re.search(r"(\d+\.\d+(?:\.\d+)?)", clean)
     return m.group(1) if m else (text.splitlines()[0] if text else None)
 
 
@@ -343,6 +345,9 @@ def main() -> int:
                         ("--model_dir", args.model_dir), ("--panel", args.panel)):
         if path and not Path(path).exists():
             sys.exit(f"{label}: {path} does not exist")
+    sys.path.insert(0, str(REPO / "scripts"))
+    from bedmethyl_to_csv import check_manifest
+    check_manifest(Path(args.manifest))                     # before any step, not after hours of alignment
     out_dir = Path(args.out_dir).expanduser().resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
 

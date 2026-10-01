@@ -29,6 +29,9 @@ of the full identifiers, so the replicate probes of one CpG give columns with th
 combines such columns (by default their mean). The row is named after --sample. A summary line gives the pileup rows
 read, the probes with a call and the mean and median methylated fraction before the calls are made.
 
+The manifest is checked first: a file with fewer probe rows than its 'Loci Count' line declares, such as a copy cut
+short in transfer, is refused, since it would otherwise give matrices with few probes and no error.
+
 --strands both is a variant under evaluation, not MethPipe's method: the reads of both strands of the probe's
 CpG are added (modified calls over valid calls of the two rows), the call is 1 above one half and 0 below, and a CpG
 whose reads are split exactly in half is left out. The pileup may be gzip-compressed.
@@ -57,6 +60,39 @@ def clean_chrom(values: pd.Series) -> pd.Series:
             .str.upper())
 
 
+def manifest_rows(path: Path):
+    """The number of probes the manifest declares on its 'Loci Count' line (None without such a line) and the number
+    of rows in its probe section: the lines after the column names, up to the next section line ([Controls]) or the
+    end of the file. Lines are counted as pandas counts them for header=7, blank lines left out."""
+    declared, rows, seen = None, 0, 0
+    with open(path, "rb") as fh:
+        for line in fh:
+            if not line.strip():
+                continue
+            seen += 1
+            if seen <= 7:
+                text = line.decode(errors="replace")
+                if text.lower().startswith("loci count"):
+                    numbers = [f.strip() for f in text.split(",")[1:] if f.strip().isdigit()]
+                    declared = int(numbers[0]) if numbers else None
+                continue
+            if seen == 8:
+                continue                                   # the column names
+            if line.startswith(b"["):
+                break
+            rows += 1
+    return declared, rows
+
+
+def check_manifest(path: Path) -> None:
+    """Refuse a manifest that holds fewer probe rows than it declares."""
+    declared, rows = manifest_rows(path)
+    if declared is not None and rows < declared:
+        raise SystemExit(f"{path}: {rows:,} probe rows, but the manifest declares {declared:,} on its Loci Count line; "
+                         "the file is incomplete, for example a copy that was cut short. Copy it again and compare "
+                         "its checksum with the original's.")
+
+
 def manifest_columns(path: Path):
     """The probe, chromosome and position columns of the manifest, chosen as MethPipe chooses them."""
     columns = [c.strip() for c in pd.read_csv(path, header=7, nrows=0).columns]
@@ -75,6 +111,7 @@ def manifest_columns(path: Path):
 
 def read_probes(path: Path) -> pd.DataFrame:
     """Probes as one-base intervals: chrom, start (0-based), end, probe_id (the full identifier)."""
+    check_manifest(path)
     probe_col, chrom_col, pos_col = manifest_columns(path)
     manifest = pd.read_csv(path, header=7, low_memory=False)
     manifest.columns = [c.strip() for c in manifest.columns]

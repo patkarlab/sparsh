@@ -40,6 +40,8 @@ The model reads one row per sample with a call of 1 or 0 for every array probe w
 
 modkit reports every CpG with reads, once for each strand, with 5-methylcytosine and 5-hydroxymethylcytosine counted together as modified. The probes come from the manifest: the probe identifier from the column IlmnID, the chromosome from the column CHR, and the position from MAPINFO_37, the GRCh37 position (the column MAPINFO of the v2.0 manifest is the GRCh38 one). Each probe stands for the single base at that position, the C of its CpG on the forward strand, and takes the pileup row that starts there. A probe gets 1 when 50% or more of the calls in that row are modified, and 0 otherwise. The reverse-strand row of the same CpG starts one base later, on the G, and is not used.
 
+The manifest is checked before anything else runs: a file with fewer probe rows than its header declares on the line Loci Count, such as a copy cut short in transfer, is refused, because it would otherwise give matrices with a fraction of the probes and no error.
+
 The columns are named by the probe identifier up to its first underscore, so the replicate probes of one CpG (cg25324105_BC11 and cg25324105_TC21, for example) give two columns with the same name and the same value, and scripts/predict.py combines them.
 
 `--strands both` adds the calls of the two strands of each CpG instead, and calls 1 above one half, 0 below, and leaves out a CpG whose calls are split exactly in half. It roughly doubles the reads behind each call, but MethPipe uses the forward strand alone, so it is not the default; it is there to be evaluated.
