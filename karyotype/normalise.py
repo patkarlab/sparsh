@@ -52,10 +52,12 @@ from .reference import FINE_BIN, load_bin_table
 
 BIN_SIZES = (500_000, 1_000_000, 2_000_000, 5_000_000)
 # Read density on chromosome Y relative to the autosomes (both per usable 100 kb bin). A man's single Y gives
-# about 0.5; a woman's reads there are misplaced ones.
-Y_MALE = 0.10            # fixed thresholds, used when the cohort does not show two clear groups
-Y_FEMALE = 0.02
-Y_MARGIN = 2.0           # with a cohort threshold t: male above t * margin, female below t / margin
+# about 0.45. A woman's reads there are misplaced ones: near 0.005 in ligation libraries, but from 0.09 to 0.16 in
+# the transposase libraries of the validation cohort, from reads of sequence that X and Y share.
+Y_MALE = 0.30            # fixed thresholds, used when the cohort does not show two clear groups
+Y_FEMALE = 0.20
+MIN_Y_SEPARATION = 0.3   # log10: the cohort's two groups must lie at least two-fold apart on Y,
+MIN_X_RATIO = 1.5        # and the group with fewer reads on Y must have at least 1.5 times the reads on X
 X_MALE = 0.72            # X density relative to the autosomes below which an ambiguous sample is taken as male
 
 
@@ -209,16 +211,22 @@ def sex_measures(sample: Sample, table: pd.DataFrame) -> Tuple[float, float]:
             float(sample.counts[x].sum() / max(1, x.sum()) / per_bin))
 
 
-def cohort_y_threshold(values: List[float], min_samples: int = 10, min_separation: float = 0.7) -> Optional[float]:
+def cohort_y_groups(y_values: List[float], x_values: Optional[List[float]] = None,
+                    min_samples: int = 10) -> Optional[Tuple[float, float]]:
     """
-    Threshold on the Y density from the cohort: the midpoint, on a log scale, between the centres of two groups
-    found by two-means clustering, provided each group has at least two samples and the centres are at least
-    `min_separation` apart in log10 (five-fold). None when the cohort does not show two such groups.
+    The cohort's women and men from the Y density: two-means clustering of log10 Y density over every split into a
+    low and a high group of two or more. Returns (threshold, separation), the midpoint between the group centres and
+    their distance in log10, or None when there are fewer than min_samples values, when the centres lie less than
+    MIN_Y_SEPARATION apart, or, given X densities, when the low group does not carry at least MIN_X_RATIO times the X
+    reads of the high group (two X chromosomes against one): the groups are then not women and men, as with a cohort of
+    men some of whom have lost the Y in their leukaemic cells.
     """
-    v = np.log10(np.asarray([x for x in values if np.isfinite(x)]) + 1e-4)
-    if len(v) < min_samples:
+    xs = x_values if x_values is not None else [float("nan")] * len(y_values)
+    pairs = sorted((np.log10(y + 1e-4), x) for y, x in zip(y_values, xs) if np.isfinite(y))
+    if len(pairs) < min_samples:
         return None
-    v = np.sort(v)
+    v = np.array([p[0] for p in pairs])
+    x = np.array([p[1] for p in pairs], dtype=float)
     best, split = np.inf, None
     for k in range(2, len(v) - 1):                    # every split into a low and a high group of two or more
         lo, hi = v[:k], v[k:]
@@ -228,29 +236,40 @@ def cohort_y_threshold(values: List[float], min_samples: int = 10, min_separatio
     if split is None:
         return None
     lo, hi = v[:split].mean(), v[split:].mean()
-    if hi - lo < min_separation:
+    if hi - lo < MIN_Y_SEPARATION:
         return None
-    return float(10 ** ((lo + hi) / 2.0))
+    if np.isfinite(x).any():
+        x_low, x_high = np.nanmedian(x[:split]), np.nanmedian(x[split:])
+        if not (np.isfinite(x_low) and np.isfinite(x_high) and x_low >= MIN_X_RATIO * x_high):
+            return None
+    return float(10 ** ((lo + hi) / 2.0)), float(hi - lo)
 
 
-def y_thresholds(values: List[float]) -> dict:
-    """Thresholds on the Y density: from the samples' own two groups when they show them, else the fixed ones."""
-    threshold = cohort_y_threshold(values)
-    male, female = (threshold * Y_MARGIN, threshold / Y_MARGIN) if threshold else (Y_MALE, Y_FEMALE)
-    return {"female_below": round(female, 4), "male_above": round(male, 4),
-            "from": "cohort" if threshold else "fixed values"}
+def y_thresholds(y_values: List[float], x_values: Optional[List[float]] = None) -> dict:
+    """
+    Thresholds on the Y density: from the cohort's two groups when it shows them, with the middle half of the gap
+    between the groups left to chromosome X to decide; else the fixed ones.
+    """
+    groups = cohort_y_groups(y_values, x_values)
+    if groups:
+        threshold, separation = groups
+        zone = 10 ** (separation / 4.0)
+        female, male, source = threshold / zone, threshold * zone, "cohort"
+    else:
+        female, male, source = Y_FEMALE, Y_MALE, "fixed values"
+    return {"female_below": round(female, 4), "male_above": round(male, 4), "from": source}
 
 
 def assign_sex(samples: List[Sample], table: pd.DataFrame, thresholds: Optional[dict] = None) -> dict:
     """
     Set the sex of every sample the sample sheet has not given, from its Y and X densities. The thresholds on the Y
-    density come from the samples whose sex is not given, unless `thresholds` (female_below, male_above, from)
-    gives them, as a stored reference panel does. Returns the thresholds used.
+    density come from all the samples (y_thresholds), unless `thresholds` (female_below, male_above, from) gives
+    them, as a stored reference panel does. Returns the thresholds used.
     """
     for s in samples:
         s.meta["y_density"], s.meta["x_density"] = sex_measures(s, table)
     if thresholds is None:
-        thresholds = y_thresholds([s.meta["y_density"] for s in samples if not s.sex])
+        thresholds = y_thresholds([s.meta["y_density"] for s in samples], [s.meta["x_density"] for s in samples])
     male, female = thresholds["male_above"], thresholds["female_below"]
     for s in samples:
         s.meta["y_density_thresholds"] = dict(thresholds)

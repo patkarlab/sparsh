@@ -38,7 +38,8 @@ def make_panel(samples: List[Sample], table: pd.DataFrame) -> Tuple[pd.DataFrame
 
 
 def write_panel(path: Path, frame: pd.DataFrame, samples: List[Sample], build: str, version: str) -> dict:
-    thresholds = y_thresholds([s.meta.get("y_density", float("nan")) for s in samples])
+    thresholds = y_thresholds([s.meta.get("y_density", float("nan")) for s in samples],
+                              [s.meta.get("x_density", float("nan")) for s in samples])
     meta = {"format": FORMAT, "build": build, "samples": str(len(samples)),
             "y_female_below": str(thresholds["female_below"]), "y_male_above": str(thresholds["male_above"]),
             "y_thresholds_from": "the panel's samples" if thresholds["from"] == "cohort" else "fixed values",
