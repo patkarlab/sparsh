@@ -8,11 +8,11 @@ SPARSH is research software. It is not a medical device, has not been cleared or
 
 ## What is in this repository
 
-The classifier is in data/, models/, training/ and evaluation/, with scripts/train.py to train it and scripts/predict.py to apply it to nanopore samples. The released model, version 0.4.0, has 32 classes of acute myeloid leukaemia, B- and T-lymphoblastic leukaemia, acute leukaemia of ambiguous lineage, blastic plasmacytoid dendritic cell neoplasm and normal bone marrow; docs/MODEL_CARD.md describes it. The copy-number karyotype is in karyotype/ with scripts/karyotype.py, the per-case report in report/ with scripts/report.py, and the figures of the training arrays in figures/ with scripts/figures.py. The documents in docs/ describe each part, and jobs/ has batch jobs for a PBS cluster.
+The classifier is in data/, models/, training/ and evaluation/, with scripts/train.py to train it and scripts/predict.py to apply it to nanopore samples. The released model, version 0.4.0, has 32 classes of acute myeloid leukaemia, B- and T-lymphoblastic leukaemia, acute leukaemia of ambiguous lineage, blastic plasmacytoid dendritic cell neoplasm and normal bone marrow; docs/MODEL_CARD.md describes it. The copy-number karyotype is in karyotype/ with scripts/karyotype.py, and the per-case report in report/ with scripts/report.py. The documents in docs/ describe each part, and jobs/ has batch jobs for a PBS cluster.
 
 ## Installation
 
-SPARSH needs Python 3.10 to 3.12 with PyTorch, NumPy, pandas, SciPy, scikit-learn and matplotlib. Working from a sample's reads also needs samtools and modkit, and dorado or minimap2 for reads that are not yet aligned; the copy-number step needs samtools; and the region analysis of the figures needs R with DMRcate (envs/figures_r.yml).
+SPARSH needs Python 3.10 to 3.12 with PyTorch, NumPy, pandas, SciPy, scikit-learn and matplotlib. Working from a sample's reads also needs samtools and modkit, and dorado or minimap2 for reads that are not yet aligned; the copy-number step needs samtools.
 
 ```bash
 git clone https://github.com/patkarlab/sparsh.git
@@ -63,10 +63,6 @@ python scripts/train.py @configs/recipe_v0.4.0.args --data_path arrays.pkl --out
 
 Training runs a nested five-fold cross-validation. Each training array is presented as a simulated nanopore sample, in which a random fraction of its CpGs is reduced to single methylation calls, and a leukaemia array is first diluted with normal marrow half of the times it is drawn. The five fold networks, each calibrated by temperature scaling on its own inner validation split, form the deployed ensemble. Every outer fold is scored once, under the same simulated conditions in every run, so runs can be compared directly. docs/TRAINING.md describes the recipe, the outputs of a run and the analyses that go with it.
 
-## Figures
-
-scripts/figures.py draws a t-SNE map of the training arrays, heatmaps of the CpGs that mark each class, the global methylation of each class, maps of the regions that DMRcate finds differentially methylated in each class (figures/dmr.R), the F1 score of each class in cross-validation, and a schematic of the training and the network. docs/FIGURES.md gives the methods.
-
 ## Repository layout
 
 ```
@@ -77,7 +73,6 @@ training/    nested cross-validation and reproducibility
 evaluation/  metrics, evaluation conditions, the reporting hierarchy, shown class names
 karyotype/   read counting, normalisation, segmentation, copy-number fit and ISCN nomenclature
 report/      the per-case HTML reports
-figures/     the figures of the model and its training arrays, with the R script for the region analysis
 scripts/     command-line tools, among them run_sample.py, the whole pipeline for one sample
 jobs/        batch jobs for a PBS cluster; jobs/settings.sh holds the paths
 tests/       synthetic data and a test for every part

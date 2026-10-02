@@ -5,8 +5,7 @@
 #   bash tests/run_all.sh
 #
 # conda-forge installs a PyTorch build with CUDA when the machine has an NVIDIA driver, and a CPU build otherwise;
-# only training needs the GPU. samtools is used by the copy-number step, and Optuna only by scripts/tune.py. The
-# region analysis of the figures runs in a separate R environment (envs/figures_r.yml).
+# only training needs the GPU. samtools is used by the copy-number step, and Optuna only by scripts/tune.py.
 name: sparsh
 channels:
   - conda-forge
