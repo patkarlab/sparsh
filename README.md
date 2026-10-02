@@ -65,7 +65,7 @@ Training runs a nested five-fold cross-validation. Each training array is presen
 
 ## Figures
 
-scripts/figures.py draws a t-SNE map of the training arrays, a heatmap of the CpGs that mark each class, the global methylation of each class, and maps of the regions that DMRcate finds differentially methylated in each class (figures/dmr.R). docs/FIGURES.md gives the methods.
+scripts/figures.py draws a t-SNE map of the training arrays, heatmaps of the CpGs that mark each class, the global methylation of each class, maps of the regions that DMRcate finds differentially methylated in each class (figures/dmr.R), the F1 score of each class in cross-validation, and a schematic of the training and the network. docs/FIGURES.md gives the methods.
 
 ## Repository layout
 
@@ -77,7 +77,7 @@ training/    nested cross-validation and reproducibility
 evaluation/  metrics, evaluation conditions, the reporting hierarchy, shown class names
 karyotype/   read counting, normalisation, segmentation, copy-number fit and ISCN nomenclature
 report/      the per-case HTML reports
-figures/     the figures of the training arrays, with the R script for the region analysis
+figures/     the figures of the model and its training arrays, with the R script for the region analysis
 scripts/     command-line tools, among them run_sample.py, the whole pipeline for one sample
 jobs/        batch jobs for a PBS cluster; jobs/settings.sh holds the paths
 tests/       synthetic data and a test for every part

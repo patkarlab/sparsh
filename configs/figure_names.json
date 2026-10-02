@@ -1,0 +1,60 @@
+{
+  "description": "Names shown in the figures of scripts/figures.py (figures/style.py). 'classes' maps internal class names to the short names of the figures; a class not listed is shown under its name in configs/display_names.json, or else its internal name. 'lineages' gives the names of the lineages of configs/class_hierarchy.json, used as headings in the legends; a lineage with a single class in a figure gets no heading. Where two classes of one figure share a short name, the maps and axes add the adjective of their lineage in brackets ('lineage_adjectives'). 'heatmap_groups' splits the signature heatmap into one image per group of lineages. The reports and predictions keep the names of configs/display_names.json.",
+  "classes": {
+    "APL_PML-RARA": "PML::RARA",
+    "AML_RUNX1-RUNX1T1": "RUNX1::RUNX1T1",
+    "AML_CBFB-MYH11": "CBFB::MYH11",
+    "AML_mutated CEBPA": "CEBPA-mutated",
+    "AML_HOXdys_NPM1_NUP98_DEK-NUP214_UBTF": "HOX-dysregulated",
+    "AML_NPM1_IDH": "NPM1 with IDH",
+    "AML_IDH": "IDH-mutated",
+    "AML_KMT2A-r": "KMT2A-rearranged",
+    "AML_NUP98-NSD1": "NUP98::NSD1",
+    "AML_ETV6-r": "ETV6-rearranged",
+    "AML_FET-ETS": "FET::ETS",
+    "AML_CBFA2T3-GLIS2": "CBFA2T3::GLIS2",
+    "AMKL_AMKL-Like": "Megakaryoblastic",
+    "AML-MR": "Myelodysplasia-related",
+    "AML_MECOM-r": "MECOM-rearranged",
+    "AL_BCL11B-r": "BCL11B-rearranged",
+    "AL_MLLT10-r": "MLLT10-rearranged",
+    "B-ALL_ETV6-RUNX1": "ETV6::RUNX1",
+    "B-ALL_Aneuploidy": "Aneuploid",
+    "B-ALL_PAX5_BCR-ABL1_BCR-ABL1-Like": "BCR::ABL1/like and PAX5r",
+    "B-ALL_DUX4-r": "DUX4-rearranged",
+    "B-ALL_KMT2A-r": "KMT2A-rearranged",
+    "B-ALL_TCF3-PBX1": "TCF3::PBX1",
+    "B-ALL_TCF3-HLF": "TCF3::HLF",
+    "B-ALL_ZNF384-r": "ZNF384-rearranged",
+    "B-ALL_MEF2D-r": "MEF2D-rearranged",
+    "B-ALL_iAMP21": "iAMP21",
+    "T-ALL_TAL1-like": "TAL1-like",
+    "T-ALL_TLX1": "TLX1",
+    "T-ALL_TLX3": "TLX3",
+    "T-ALL_NKX2": "NKX2",
+    "T-ALL_HOXA9_ETP": "HOXA or early T-cell precursor",
+    "BPDCN": "Blastic plasmacytoid dendritic cell neoplasm",
+    "Normal_Control_BM": "Normal bone marrow"
+  },
+  "lineages": {
+    "AML": "Acute myeloid leukemia",
+    "Ambiguous lineage": "Acute leukemia of ambiguous lineage",
+    "B-ALL": "B-lymphoblastic leukemia",
+    "T-ALL": "T-lymphoblastic leukemia",
+    "BPDCN": "Blastic plasmacytoid dendritic cell neoplasm",
+    "Normal marrow": "Normal bone marrow",
+    "Mixed phenotype": "Mixed-phenotype acute leukemia",
+    "Other": "Other"
+  },
+  "lineage_adjectives": {
+    "AML": "myeloid",
+    "Ambiguous lineage": "ambiguous lineage",
+    "B-ALL": "B-lymphoblastic",
+    "T-ALL": "T-lymphoblastic",
+    "Mixed phenotype": "mixed phenotype"
+  },
+  "heatmap_groups": {
+    "myeloid": ["AML", "Ambiguous lineage", "BPDCN", "Normal marrow"],
+    "lymphoblastic": ["B-ALL", "T-ALL"]
+  }
+}

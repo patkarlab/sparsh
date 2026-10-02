@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 Synthetic arrays for the figure tests: a training pickle, a run folder that lists its arrays (folds.csv and
-config.json, as scripts/train.py writes them), a CpG annotation, a label map and an exclusion list.
+config.json, as scripts/train.py writes them, with cross-validation predictions of two conditions), a CpG
+annotation, a label map and an exclusion list.
 
 CpGs sit in clusters of five, 100 bases apart, spread over the autosomes, with a few on X and Y whose values follow
 sex. Each class is hyper- or hypomethylated over its own clusters, so it has both signature CpGs and regions.
@@ -90,8 +91,28 @@ def main():
     folds["outer_fold"] = np.arange(len(folds)) % 5 + 1
     folds.to_csv(out / "run" / "folds.csv", index=False)
     config = {"data": {"data_path": str(out / "train.pkl"), "label_map": str(out / "label_map.json"),
-                       "exclude_ids": str(out / "exclude.txt"), "exclude_classes": list(EXTRA)}}
+                       "exclude_ids": str(out / "exclude.txt"), "exclude_classes": list(EXTRA),
+                       "n_samples": len(folds), "n_cpgs": n_cpg,
+                       "class_counts": folds["label"].value_counts().to_dict()},
+              "model": {"input_dim": n_cpg, "hidden_dims": [1024, 512, 256], "n_classes": len(CLASSES),
+                        "dropout": 0.45, "activation": "gelu", "input_encoding": "scaled"},
+              "training": {"train_sim": "binary", "cov_min": 0.02, "cov_max": 0.95, "coverage_dist": "uniform",
+                           "dilution_prob": 0.5, "blast_min": 0.2, "focal_gamma": 2.0, "label_smoothing": 0.05,
+                           "samples_per_class_per_batch": 5, "learning_rate": 1e-4, "weight_decay": 1e-4,
+                           "epochs": 300, "early_stopping_patience": 30, "n_folds": 5, "inner_val_frac": 0.15,
+                           "calibrate": True},
+              "inference": {"threshold": 0.9, "fold_models": [{"file": f"fold_models/fold{k}.pt", "temperature": 1.0}
+                                                              for k in range(1, 6)]}}
     (out / "run" / "config.json").write_text(json.dumps(config, indent=1))
+    # cross-validation predictions: every array predicted as its class, except a known share of errors
+    names = sorted(CLASSES)
+    for cond, wrong_every in (("dense", 10), ("binary_0.30", 5)):
+        pred = [lab if k % wrong_every else names[(names.index(lab) + 1) % len(names)]
+                for k, lab in enumerate(folds["label"])]
+        pd.DataFrame({"sample_id": folds["sample_id"], "outer_fold": folds["outer_fold"], "temperature": 1.0,
+                      "true_label": folds["label"], "prediction": pred, "confidence": 0.95,
+                      "correct": [int(a == b) for a, b in zip(folds["label"], pred)]}).to_csv(
+            out / "run" / f"cv_predictions_{cond}.csv", index=False)
     pd.DataFrame({"probe": probes, "chrom": chrom, "pos": pos, "genes": [f"GENE{k // 5}" for k in range(n_cpg)],
                   "gene_regions": "Body", "island": "OpenSea"}).to_csv(out / "annotation.tsv.gz", sep="\t",
                                                                          index=False)

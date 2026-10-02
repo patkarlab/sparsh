@@ -1,6 +1,7 @@
 #!/bin/bash
 # Figures on synthetic arrays with known class signatures: t-SNE maps (with a class outside the model added to the
-# supplementary map), class statistics, the signature heatmap, global methylation, and, when R with DMRcate is
+# supplementary map), class statistics, the signature heatmaps of the two groups of lineages, global methylation,
+# the F1 score of every class from cross-validation predictions, the schematic, and, when R with DMRcate is
 # available (RSCRIPT, default Rscript), the regions and their maps. CPU only, about a minute. Run from the
 # repository folder:
 #   bash tests/test_figures.sh
@@ -25,6 +26,8 @@ ARGS=(--model_dir "$TMP/data/run" --out_dir "$TMP/fig" --annotation "$TMP/data/a
 step tsne    "$PYTHON" scripts/figures.py tsne "${ARGS[@]}" --extra_classes AML-MR --n_cpgs 500 --iterations 500
 step markers "$PYTHON" scripts/figures.py markers "${ARGS[@]}" --extra_classes AML-MR --per_class 10
 grep -q "Arrays from the cache" "$TMP/markers.log" || { echo "FAIL  cache: markers read the pickle again"; exit 1; }
+step performance "$PYTHON" scripts/figures.py performance --model_dir "$TMP/data/run" --out_dir "$TMP/fig"
+step schematic   "$PYTHON" scripts/figures.py schematic --model_dir "$TMP/data/run" --out_dir "$TMP/fig"
 DMR=no
 if "$RSCRIPT" -e 'suppressPackageStartupMessages(library(DMRcate))' > /dev/null 2>&1; then
     step dmr     "$RSCRIPT" figures/dmr.R --input "$TMP/fig/regions_input" --out "$TMP/fig/regions"
@@ -59,8 +62,19 @@ assert len(used) == 500 and not ann.loc[used, "chrom"].isin(["chrX", "chrY"]).an
 settings = json.loads((fig / "tsne_settings.json").read_text())
 assert settings["arrays"] == len(folds) and settings["cpgs_used"] == 500
 
-sig = pd.read_csv(fig / "signature_cpgs.csv")
-assert set(sig["class"]) == set(folds["label"]), set(sig["class"])
+groups = {"myeloid": {"AML_KMT2A-r", "AML_IDH", "Normal_Control_BM"},
+          "lymphoblastic": {"B-ALL_ETV6-RUNX1", "B-ALL_Aneuploidy", "T-ALL_TLX3"}}
+parts = []
+for name, members in groups.items():
+    part = pd.read_csv(fig / f"signature_cpgs_{name}.csv")
+    assert set(part["class"]) == members, (name, set(part["class"]))
+    cols = pd.read_csv(fig / f"signature_heatmap_{name}_columns.csv")
+    assert set(cols["class"]) == members and len(cols) == folds["label"].isin(members).sum(), name
+    for ext in ("png", "pdf", "svg"):
+        assert (fig / f"signature_heatmap_{name}.{ext}").exists(), (name, ext)
+    parts.append(part)
+sig = pd.concat(parts)
+assert not (fig / "signature_heatmap.png").exists()
 for cls, rows in sig.groupby("class"):
     marked = truth[(truth["class"] == cls)]
     clusters = {int(p[2:]) // 5 for p in rows["cpg"]}
@@ -69,9 +83,19 @@ for cls, rows in sig.groupby("class"):
     for row in rows.itertuples():
         want = marked.loc[marked["cluster"] == int(row.cpg[2:]) // 5, "direction"]
         assert want.empty or want.iloc[0] == row.direction, (cls, row.cpg)
-for name in ("signature_heatmap", "global_methylation"):
+for name in ("global_methylation", "f1_by_class", "training_schematic"):
     for ext in ("png", "pdf", "svg"):
         assert (fig / f"{name}.{ext}").exists(), name
+f1 = pd.read_csv(fig / "f1_by_class.csv").set_index("class")
+assert set(f1.index) == set(folds["label"])
+for cond in ("dense", "binary_0.30"):
+    pred = pd.read_csv(tmp / "data" / "run" / f"cv_predictions_{cond}.csv")
+    for cls in f1.index:
+        tp = ((pred["true_label"] == cls) & (pred["prediction"] == cls)).sum()
+        fp = ((pred["true_label"] != cls) & (pred["prediction"] == cls)).sum()
+        fn = ((pred["true_label"] == cls) & (pred["prediction"] != cls)).sum()
+        assert abs(f1.at[cls, f"f1_{cond}"] - 2 * tp / (2 * tp + fp + fn)) < 1e-3, (cond, cls)
+assert (f1["f1_dense"] > f1["f1_binary_0.30"]).all(), "the synthetic errors are rarer in the dense condition"
 listing = pd.read_csv(fig / "regions_input" / "classes.tsv", sep="\t")
 assert len(listing) == folds["label"].nunique()
 one = pd.read_csv(fig / "regions_input" / listing["file"].iloc[0], sep="\t")

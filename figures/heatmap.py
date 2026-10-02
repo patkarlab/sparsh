@@ -1,11 +1,15 @@
 """
 Signature heatmap, and global methylation by class.
 
-Signature CpGs are, for each class, the CpGs that separate it most clearly from all other arrays, in both
-directions: among CpGs off the sex chromosomes whose mean beta differs by at least min_delta (0.2 by default)
-between the class and the rest, the per_class (25) with the largest positive t statistic of stats.py and the
-per_class with the largest negative one. A CpG chosen for several classes is shown once, in the block of the
-first class in the legend order.
+The heatmap is drawn once for each group of lineages of configs/figure_names.json (heatmap_groups): by default
+acute myeloid leukemia with acute leukemia of ambiguous lineage, blastic plasmacytoid dendritic cell neoplasm and
+normal bone marrow, and B- and T-lymphoblastic leukemia. Within a group, each class is compared with the other
+arrays of the group, so the heatmap shows what separates the classes of those lineages rather than the lineages
+themselves. Signature CpGs are, for each class, the CpGs that separate it most clearly from those arrays, in
+both directions: among CpGs off the sex chromosomes whose mean beta differs by at least min_delta (0.2 by
+default), the per_class (25) with the largest positive t statistic of stats.py and the per_class with the
+largest negative one. A CpG chosen for several classes is shown once, in the block of the first class in the
+legend order.
 
 The heatmap shows the beta values of these CpGs (rows, in blocks by the class they mark, hypermethylated CpGs of
 a block first) in every array (columns, grouped by class in the legend order, which groups the lineages).
@@ -84,7 +88,7 @@ def plot_heatmap(betas: np.ndarray, classes: np.ndarray, signatures: pd.DataFram
     present = [c for c in style.order if c in set(col_classes)]
 
     fig = plt.figure(figsize=(7.1, 8.2))
-    left, width = 0.06, 0.68
+    left, width = 0.06, 0.63
     ax = fig.add_axes([left, 0.05, width, 0.88])
     ax_lin = fig.add_axes([left, 0.955, width, 0.012])
     ax_cls = fig.add_axes([left, 0.94, width, 0.012])
@@ -126,11 +130,20 @@ def plot_heatmap(betas: np.ndarray, classes: np.ndarray, signatures: pd.DataFram
     ax.set_xlabel(f"{len(columns)} arrays, by class", fontsize=6)
     ax.set_ylabel(f"{len(rows)} signature CpGs, by the class they mark", fontsize=6, labelpad=10)
 
-    handles = [Line2D([], [], marker="s", lw=0, markersize=4, markerfacecolor=style.colour[c], markeredgewidth=0)
-               for c in names]
-    labels = [f"{style.name(c)} ({int(np.sum(col_classes == c))})" for c in names]
-    fig.legend(handles, labels, loc="upper left", bbox_to_anchor=(left + width + 0.01, 0.97), fontsize=5,
-               frameon=False, handletextpad=0.3, labelspacing=0.3, borderaxespad=0)
+    handles, labels = [], []
+    for label, c in style.legend_entries(names):
+        if c is None:                                      # a lineage heading, or a gap
+            handles.append(Line2D([], [], lw=0))
+            labels.append(label)
+            continue
+        handles.append(Line2D([], [], marker="s", lw=0, markersize=4, markerfacecolor=style.colour[c],
+                              markeredgewidth=0))
+        labels.append(f"{label} ({int(np.sum(col_classes == c))})")
+    legend = fig.legend(handles, labels, loc="upper left", bbox_to_anchor=(left + width + 0.01, 0.97), fontsize=5,
+                        frameon=False, handletextpad=0.3, labelspacing=0.3, borderaxespad=0)
+    for text, handle in zip(legend.get_texts(), handles):
+        if handle.get_marker() in (None, "None", ""):
+            text.set_fontweight("bold")
     bar = fig.colorbar(image, cax=ax_bar)
     bar.set_label("beta value", fontsize=5)
     bar.ax.tick_params(labelsize=5)
@@ -157,8 +170,8 @@ def plot_global(values: np.ndarray, classes: np.ndarray, style: Style, path_stem
     import matplotlib.pyplot as plt
 
     names = [c for c in style.order if c in set(classes)]
-    fig, ax = plt.subplots(figsize=(7.1, 3.0))
-    fig.subplots_adjust(left=0.08, right=0.99, top=0.97, bottom=0.34)
+    fig, ax = plt.subplots(figsize=(7.1, 3.4))
+    fig.subplots_adjust(left=0.08, right=0.99, top=0.97, bottom=0.33)
     data = [values[classes == c] for c in names]
     parts = ax.boxplot(data, widths=0.6, patch_artist=True, showfliers=False, medianprops={"color": "black", "lw": 0.8},
                        whiskerprops={"lw": 0.6}, capprops={"lw": 0.6}, boxprops={"lw": 0.6})
@@ -169,7 +182,8 @@ def plot_global(values: np.ndarray, classes: np.ndarray, style: Style, path_stem
     for k, d in enumerate(data, start=1):
         ax.scatter(k + rng.uniform(-0.18, 0.18, len(d)), d, s=1.2, c="#252525", lw=0, alpha=0.6, rasterized=True)
     ax.set_xticks(range(1, len(names) + 1))
-    ax.set_xticklabels([style.name(c) for c in names], rotation=60, ha="right", fontsize=5)
+    ax.set_xticklabels(style.axis_labels(names, [len(d) for d in data]), rotation=90, ha="center", va="top",
+                       fontsize=5, linespacing=1.1)
     ax.set_ylabel("Mean beta over all CpGs", fontsize=6)
     ax.tick_params(axis="y", labelsize=5)
     for side in ("top", "right"):

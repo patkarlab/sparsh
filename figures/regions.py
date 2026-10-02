@@ -101,14 +101,14 @@ def plot_counts(regions: pd.DataFrame, style: Style, order: Sequence[str], path_
     names = [c for c in order if c in set(regions["class"])]
     hyper = [int(((kept["class"] == c) & (kept["direction"] == "hyper")).sum()) for c in names]
     hypo = [int(((kept["class"] == c) & (kept["direction"] == "hypo")).sum()) for c in names]
-    fig, ax = plt.subplots(figsize=(7.1, 3.0))
-    fig.subplots_adjust(left=0.08, right=0.99, top=0.88, bottom=0.36)
+    fig, ax = plt.subplots(figsize=(7.1, 3.4))
+    fig.subplots_adjust(left=0.08, right=0.99, top=0.9, bottom=0.33)
     x = np.arange(len(names))
     ax.bar(x, hyper, color="#b2182b", width=0.8, label="hypermethylated in the class")
     ax.bar(x, [-v for v in hypo], color="#2166ac", width=0.8, label="hypomethylated in the class")
     ax.axhline(0, color="black", lw=0.5)
     ax.set_xticks(x)
-    ax.set_xticklabels([style.name(c) for c in names], rotation=60, ha="right", fontsize=5)
+    ax.set_xticklabels(style.axis_labels(names), rotation=90, ha="center", va="top", fontsize=5, linespacing=1.1)
     ax.set_ylabel("Regions (hypomethylated below zero)", fontsize=6)
     ax.tick_params(axis="y", labelsize=5)
     ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"{abs(int(v))}"))
@@ -146,7 +146,7 @@ def plot_genome_map(regions: pd.DataFrame, style: Style, order: Sequence[str], p
             y = np.full(len(x), -row + shift)
             ax.scatter(x, y, marker="|", s=6, c=colour, lw=0.4, alpha=0.7, rasterized=True, zorder=2)
     ax.set_yticks([-r for r in range(len(names))])
-    ax.set_yticklabels([style.name(c) for c in names], fontsize=5)
+    ax.set_yticklabels([style.unique_name(c, names) for c in names], fontsize=5)
     ax.set_ylim(-len(names) + 0.4, 0.6)
     ax.set_xlim(0, pos)
     ax.set_xticks([offsets[c] + HG19_LENGTHS[c] / 2 for c in AUTOSOMES])
@@ -210,7 +210,7 @@ def plot_loci(picks: pd.DataFrame, betas: np.ndarray, classes: np.ndarray, annot
         ax.set_ylim(-0.02, 1.02)
         ax.tick_params(labelsize=4, length=1.5, pad=1)
         genes = r["genes"].split(", ")[0] if isinstance(r["genes"], str) and r["genes"] else "intergenic"
-        ax.set_title(f"{style.name(cls)}\n{genes}, {r['chrom']}:{int(r['start']):,}", fontsize=4.5, pad=2)
+        ax.set_title(f"{style.unique_name(cls)}\n{genes}, {r['chrom']}:{int(r['start']):,}", fontsize=4.5, pad=2)
         for side in ("top", "right"):
             ax.spines[side].set_visible(False)
     for k in range(n, nrow * ncol):

@@ -1,18 +1,23 @@
 #!/usr/bin/env python3
 """
-Figures of a model's training arrays for the manuscript: a t-SNE map, a signature heatmap with global
-methylation by class, and maps of differentially methylated regions.
+Figures of a model for the manuscript: from its training arrays a t-SNE map, signature heatmaps with global
+methylation by class, and maps of differentially methylated regions; from its cross-validation the F1 score of
+every class; and a schematic of its training and network.
 
-    python scripts/figures.py tsne    --model_dir RUN --out_dir FIGURES --annotation cpg_annotation_hg19.tsv.gz
-    python scripts/figures.py markers --model_dir RUN --out_dir FIGURES --annotation cpg_annotation_hg19.tsv.gz
+    python scripts/figures.py tsne        --model_dir RUN --out_dir FIGURES --annotation cpg_annotation_hg19.tsv.gz
+    python scripts/figures.py markers     --model_dir RUN --out_dir FIGURES --annotation cpg_annotation_hg19.tsv.gz
+    python scripts/figures.py performance --model_dir RUN --out_dir FIGURES
+    python scripts/figures.py schematic   --model_dir RUN --out_dir FIGURES
     Rscript figures/dmr.R --input FIGURES/regions_input --out FIGURES/regions
-    python scripts/figures.py regions --model_dir RUN --out_dir FIGURES --annotation cpg_annotation_hg19.tsv.gz
+    python scripts/figures.py regions     --model_dir RUN --out_dir FIGURES --annotation cpg_annotation_hg19.tsv.gz
 
 RUN is the training run folder of the model (its folds.csv lists the arrays and their classes, its config.json
-the training pickle, which --data_path can replace). The annotation comes from scripts/cpg_annotation.py. The
-arrays are read from the pickle once and kept in FIGURES/cache for the later steps. --extra_classes adds arrays of
-classes left out of the model (for example AML-MR AML_MECOM-r) to a second, supplementary t-SNE map; the other
-figures use the model's arrays only. jobs/figures.pbs runs all four steps. docs/FIGURES.md describes the methods.
+the training pickle, which --data_path can replace, and the settings the schematic shows; its cv_predictions
+files hold the cross-validation). The annotation comes from scripts/cpg_annotation.py. The arrays are read from
+the pickle once and kept in FIGURES/cache for the later steps. --extra_classes adds arrays of classes left out of
+the model (for example AML-MR AML_MECOM-r) to a second, supplementary t-SNE map; the other figures use the
+model's arrays only. Names come from configs/figure_names.json. jobs/figures.pbs runs all the steps.
+docs/FIGURES.md describes the methods.
 """
 
 import argparse
@@ -42,10 +47,37 @@ def common(args):
     return out, arrays, annotation, style
 
 
+def remove_stale(out: Path, patterns) -> None:
+    """Removes figures an earlier version of these steps wrote under names no longer used."""
+    stale = [f for pattern in patterns for f in sorted(out.glob(pattern))]
+    for f in stale:
+        f.unlink()
+    if stale:
+        print(f"Removed {len(stale)} files of an earlier layout: {', '.join(sorted({f.name for f in stale}))}")
+
+
+def heatmap_groups(style, present):
+    """[(name, classes)] for the signature heatmaps: the groups of lineages of figure_names.json, then any rest."""
+    if not style.heatmap_groups:
+        return [("all", list(present))]
+    groups, used = [], set()
+    for name, lineages in style.heatmap_groups.items():
+        members = [c for c in present if style.lineage[c] in lineages]
+        if members:
+            groups.append((name, members))
+            used.update(members)
+    rest = [c for c in present if c not in used]
+    if rest:
+        groups.append(("other", rest))
+    return groups
+
+
 def cmd_tsne(args) -> int:
     from figures.tsne import correlation_distance, plot_map, run_tsne, variable_cpgs
 
     out, arrays, annotation, style = common(args)
+    if arrays.in_model.all():
+        remove_stale(out, ["tsne_with_excluded_classes_*"])
     settings = {"n_cpgs": args.n_cpgs, "max_missing": 0.05, "distance": "1 - Pearson correlation",
                 "perplexity": args.perplexity, "seed": args.seed, "iterations": args.iterations}
     runs = [("tsne", arrays.in_model)]
@@ -79,25 +111,71 @@ def cmd_markers(args) -> int:
     from figures.stats import one_vs_rest
 
     out, arrays, annotation, style = common(args)
+    remove_stale(out, ["signature_heatmap.png", "signature_heatmap.pdf", "signature_heatmap.svg",
+                       "signature_heatmap_columns.csv", "signature_cpgs.csv"])
     part = arrays.subset(arrays.in_model)
     order = [c for c in style.order if c in set(part.classes)]
-    print(f"Each of {len(order)} classes against the other arrays, over {part.betas.shape[1]} CpGs")
+    print(f"Each of {len(order)} classes against all other arrays, over {part.betas.shape[1]} CpGs")
     statistics = one_vs_rest(part.betas, part.classes, order)
-    signatures = signature_cpgs(statistics, order, annotation, args.per_class, args.min_delta)
-    signatures.drop(columns="index").to_csv(out / "signature_cpgs.csv", index=False)
-    columns = column_order(part.betas, part.classes, order, signatures)
-    plot_heatmap(part.betas, part.classes, signatures, columns, style, out / "signature_heatmap")
-    pd.DataFrame({"sample_id": part.samples[columns], "class": part.classes[columns]}).to_csv(
-        out / "signature_heatmap_columns.csv", index=False)
+    summary_table(statistics, order, annotation, args.min_delta).to_csv(out / "class_markers_summary.csv",
+                                                                         index=False)
+    listing = write_input(statistics, annotation, order, style, out / "regions_input")
+    print(f"Region input for {len(listing)} classes in {out / 'regions_input'}")
+    del statistics
+    total = 0
+    for name, members in heatmap_groups(style, order):
+        if len(members) < 2:
+            print(f"Heatmap {name}: only {len(members)} class, not drawn")
+            continue
+        sub = part.subset(np.isin(part.classes, members))
+        print(f"Heatmap {name}: {len(members)} classes, {len(sub.samples)} arrays, each class against the other "
+              f"arrays of the group")
+        group_stats = one_vs_rest(sub.betas, sub.classes, members)
+        signatures = signature_cpgs(group_stats, members, annotation, args.per_class, args.min_delta)
+        signatures.drop(columns="index").to_csv(out / f"signature_cpgs_{name}.csv", index=False)
+        columns = column_order(sub.betas, sub.classes, members, signatures)
+        plot_heatmap(sub.betas, sub.classes, signatures, columns, style, out / f"signature_heatmap_{name}")
+        pd.DataFrame({"sample_id": sub.samples[columns], "class": sub.classes[columns]}).to_csv(
+            out / f"signature_heatmap_{name}_columns.csv", index=False)
+        total += len(signatures)
+        del sub, group_stats
     values = global_methylation(part.betas)
     pd.DataFrame({"sample_id": part.samples, "class": part.classes, "mean_beta": values.round(4)}).to_csv(
         out / "global_methylation.csv", index=False)
     plot_global(values, part.classes, style, out / "global_methylation")
-    summary_table(statistics, order, annotation, args.min_delta).to_csv(out / "class_markers_summary.csv",
-                                                                         index=False)
-    listing = write_input(statistics, annotation, order, style, out / "regions_input")
-    print(f"Signature CpGs: {len(signatures)}; region input for {len(listing)} classes in {out / 'regions_input'}")
+    print(f"Signature CpGs in the heatmaps: {total}")
     print(f"Next: Rscript figures/dmr.R --input {out / 'regions_input'} --out {out / 'regions'}")
+    return 0
+
+
+def cmd_performance(args) -> int:
+    from figures.data import read_run
+    from figures.performance import condition_label, f1_table, plot_f1
+
+    out = Path(args.out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    folds, _ = read_run(Path(args.model_dir))
+    style = load_style(sorted(set(folds["label"])))
+    classes = [c for c in style.order if c in set(folds["label"])]
+    table = f1_table(Path(args.model_dir), args.conditions, classes, style)
+    table.to_csv(out / "f1_by_class.csv", index=False)
+    plot_f1(table, args.conditions, style, out / "f1_by_class")
+    for cond in args.conditions:
+        print(f"{condition_label(cond)}: mean F1 over {len(classes)} classes "
+              f"{np.nanmean(table[f'f1_{cond}']):.3f}, lowest {np.nanmin(table[f'f1_{cond}']):.3f}")
+    print(f"Written to {out}")
+    return 0
+
+
+def cmd_schematic(args) -> int:
+    from figures.schematic import plot_schematic, read_settings
+
+    out = Path(args.out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    settings = read_settings(Path(args.model_dir))
+    plot_schematic(settings, out / "training_schematic")
+    print(f"{settings['arrays']:,} arrays, {settings['classes']} classes, {settings['cpgs']:,} CpGs; layers "
+          f"{settings['hidden']}; written to {out / 'training_schematic.png'}")
     return 0
 
 
@@ -147,11 +225,23 @@ def parse_args():
     t.add_argument("--iterations", type=int, default=2000)
     t.set_defaults(func=cmd_tsne)
 
-    m = sub.add_parser("markers", help="class statistics, signature heatmap, global methylation, region input")
+    m = sub.add_parser("markers", help="class statistics, signature heatmaps, global methylation, region input")
     shared(m)
     m.add_argument("--per_class", type=int, default=25, help="signature CpGs per class and direction")
     m.add_argument("--min_delta", type=float, default=0.2, help="smallest difference in mean beta")
     m.set_defaults(func=cmd_markers)
+
+    f = sub.add_parser("performance", help="F1 score of every class in cross-validation")
+    f.add_argument("--model_dir", required=True, help="training run folder (folds.csv, cv_predictions_*.csv)")
+    f.add_argument("--out_dir", required=True)
+    f.add_argument("--conditions", nargs="+", default=["dense", "binary_0.30"],
+                   help="cross-validation conditions, lightest bar first (default: dense binary_0.30)")
+    f.set_defaults(func=cmd_performance)
+
+    s = sub.add_parser("schematic", help="schematic of the training and the network, from config.json")
+    s.add_argument("--model_dir", required=True, help="training run folder (config.json)")
+    s.add_argument("--out_dir", required=True)
+    s.set_defaults(func=cmd_schematic)
 
     r = sub.add_parser("regions", help="maps and locus plots of the regions from figures/dmr.R")
     shared(r)
