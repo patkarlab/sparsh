@@ -38,6 +38,15 @@ CASES = {
     "CASE_SUB17P_F": ("XX", 0.9, 110, [("chr17", 0, 22_000_000, "f0.4"), ("chr8", 0, None, 3)]),
     "CASE_LOY_M": ("XY", 0.9, 110, [("chrY", 0, None, 0)]),
     "CASE_LOWDEPTH_F": ("XX", 0.9, 12, [("chr21", 0, None, 3)]),
+    # shorter changes only, in fewer cells than the sample sheet's blast percentage allows: still diploid
+    "CASE_FOCAL_F": ("XX", 0.6, 400, [("chr12", 11_000_000, 26_500_000, 1), ("chr14", 100_000_000, 105_500_000, 0),
+                                      ("chr10", 95_000_000, 100_000_000, 0), ("chr2", 239_500_000, None, 3)]),
+    # a near-triploid clone of 68 chromosomes: 7, 13 and 17 at two copies, 8 and 21 at four, and parts of 5q and 12p
+    # at two copies
+    "CASE_TRIPLOID_F": ("XX", 0.95, 110, [(c, 0, None, 3) for c in AUTOSOMES + ["chrX"]]
+                        + [(c, 0, None, 2) for c in ("chr7", "chr13", "chr17")]
+                        + [(c, 0, None, 4) for c in ("chr8", "chr21")]
+                        + [("chr5", 85_000_000, 150_000_000, 2), ("chr12", 11_000_000, 26_500_000, 2)]),
 }
 
 

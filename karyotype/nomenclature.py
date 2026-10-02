@@ -29,7 +29,16 @@ Karyotype line
     <3n>, near-tetraploid genomes (80 or more) against the tetraploid level, with <4n>, and everything from
     31 to 67 chromosomes, hypodiploid and high hyperdiploid genomes included, against the diploid level.
     It rests on read depth only: structural changes, balanced rearrangements and the arrangement of the
-    extra material are not seen.
+    extra material are not seen. A chromosome changed in part keeps its count: two copies on a diploid
+    baseline, and on another baseline, where the copies of the rest of such a chromosome are not known
+    beforehand, the copy number covering most of it.
+
+Events against the ploidy level
+    The events and the ISCN description give copy numbers against the constitutional two copies, as ISCN
+    does. The flags are read against the ploidy level of the karyotype line instead, as a cytogeneticist reads
+    a near-triploid or near-tetraploid karyotype: a chromosome at two copies in a near-triploid genome is a
+    loss, and one at three copies there is not a change. For a genome written against the diploid level the
+    two lists are the same.
 """
 
 from typing import Dict, List, Optional, Tuple
@@ -137,36 +146,42 @@ def band_range(bands, chrom: str, start: int, end: int) -> str:
     return f"{label}{b1}" if b1 == b2 else f"{label}{b1}{b2}"
 
 
-def describe(seg: pd.DataFrame, fit, sex: str, bins, log_ratio: np.ndarray, bands, genes: pd.DataFrame,
-             build: str) -> dict:
-    """Events, ISCN, karyotype line, ploidy class and flags for one sample."""
-    finite = np.isfinite(log_ratio)
-    length = (bins.end - bins.start).astype(float)
-    cn_bin = _bins_by_copy(seg, fit.copies, bins.chrom, bins.start, bins.end, finite)
-    frac_bin = np.full(len(bins.chrom), np.nan)
-    sub_bin = np.zeros(len(bins.chrom), bool)
-    for s, row in enumerate(seg.itertuples()):
-        idx = np.arange(row.first_bin, row.last_bin + 1)
-        frac_bin[idx] = fit.cell_fraction[s]
-        sub_bin[idx] = fit.subclonal[s]
+def sex_copies(level: int, sex: str) -> Tuple[int, int]:
+    """Copies of X and Y at a ploidy level: X, XX, XXX, XXXX for a woman; X, XY, XXY, XXYY for a man."""
+    if sex == "XX":
+        return level, 0
+    return {1: (1, 0), 2: (1, 1), 3: (2, 1), 4: (2, 2)}[level]
 
-    events, counts = [], {}
+
+def level_copies(chrom: str, sex: str, level: int) -> int:
+    """Copies of a chromosome at a ploidy level; at level 2 the constitutional number."""
+    if chrom in ("chrX", "chrY"):
+        return sex_copies(level, sex)[0 if chrom == "chrX" else 1]
+    return level
+
+
+def _analysed(chrom: str, bins, cn_bin: np.ndarray, bands) -> np.ndarray:
+    """Bins of a chromosome with a copy number; on the acrocentric chromosomes only those of the long arm."""
+    analysed = (bins.chrom == chrom) & (cn_bin >= 0)
+    if is_acrocentric(chrom):
+        analysed &= bins.start >= centromere(bands, chrom)[1]
+    return analysed
+
+
+def _events(cn_bin: np.ndarray, length: np.ndarray, bins, bands, genes, frac_bin, sub_bin, sex: str,
+            reference: Dict[str, int]) -> List[dict]:
+    """Whole-chromosome, arm and segmental events against the copies in reference (by chromosome)."""
+    events = []
     for chrom in CHROMOSOMES:
-        normal = normal_copies(chrom, sex)
-        on = bins.chrom == chrom
         if chrom == "chrY" and sex == "XX":
             continue
+        normal = reference[chrom]
         cen_start, cen_end = centromere(bands, chrom)
-        analysed = on & (cn_bin >= 0)
-        if is_acrocentric(chrom):
-            analysed &= bins.start >= cen_end
+        analysed = _analysed(chrom, bins, cn_bin, bands)
         if not analysed.any():
-            counts[chrom] = normal
             continue
         whole_cn, whole_share = _majority(cn_bin, length, analysed)
-        # the karyotype line counts whole chromosomes only; a chromosome changed in part keeps its normal count
-        counts[chrom] = whole_cn if whole_share >= WHOLE else normal
-        regions = []                                    # (arm, mask, reference level)
+        regions = []                                    # (arm, mask, copy number of the region)
         if whole_share >= WHOLE:
             if whole_cn != normal:
                 idx = np.flatnonzero(analysed & (cn_bin == whole_cn))
@@ -183,23 +198,59 @@ def describe(seg: pd.DataFrame, fit, sex: str, bins, log_ratio: np.ndarray, band
                     events.append(_event("arm", chrom, arm, bins, idx, arm_cn, normal, frac_bin, sub_bin, bands,
                                          genes))
                 regions.append((arm, mask, arm_cn if arm_share >= WHOLE else normal))
-        for arm, mask, level in regions:
+        for arm, mask, region_cn in regions:
             idx_all = np.flatnonzero(mask)
             run = []
             for i in list(idx_all) + [None]:
-                if i is not None and cn_bin[i] != level and (not run or cn_bin[i] == cn_bin[run[-1]]):
+                if i is not None and cn_bin[i] != region_cn and (not run or cn_bin[i] == cn_bin[run[-1]]):
                     run.append(i)
                     continue
                 if run:
                     span = bins.end[run[-1]] - bins.start[run[0]]
-                    # a stretch at the constitutional number inside a gained or lost chromosome or arm is not
+                    # a stretch at the reference number inside a gained or lost chromosome or arm is not
                     # an abnormality of its own: the gain or loss around it already ends there
                     if span >= MIN_EVENT_BP and len(run) >= MIN_EVENT_BINS and int(cn_bin[run[0]]) != normal:
                         events.append(_event("segment", chrom, arm, bins, np.array(run), int(cn_bin[run[0]]),
                                              normal, frac_bin, sub_bin, bands, genes))
                     run = []
-                if i is not None and cn_bin[i] != level:
+                if i is not None and cn_bin[i] != region_cn:
                     run = [i]
+    return events
+
+
+def describe(seg: pd.DataFrame, fit, sex: str, bins, log_ratio: np.ndarray, bands, genes: pd.DataFrame,
+             build: str) -> dict:
+    """Events, ISCN, karyotype line, ploidy class and flags for one sample."""
+    finite = np.isfinite(log_ratio)
+    length = (bins.end - bins.start).astype(float)
+    cn_bin = _bins_by_copy(seg, fit.copies, bins.chrom, bins.start, bins.end, finite)
+    frac_bin = np.full(len(bins.chrom), np.nan)
+    sub_bin = np.zeros(len(bins.chrom), bool)
+    for s, row in enumerate(seg.itertuples()):
+        idx = np.arange(row.first_bin, row.last_bin + 1)
+        frac_bin[idx] = fit.cell_fraction[s]
+        sub_bin[idx] = fit.subclonal[s]
+
+    counts = {}
+    for chrom in CHROMOSOMES:
+        if chrom == "chrY" and sex == "XX":
+            continue
+        normal = normal_copies(chrom, sex)
+        analysed = _analysed(chrom, bins, cn_bin, bands)
+        if not analysed.any():
+            counts[chrom] = normal
+            continue
+        whole_cn, whole_share = _majority(cn_bin, length, analysed)
+        # the karyotype line counts whole chromosomes; a chromosome changed in part keeps its count, two on a
+        # diploid baseline and otherwise the copy number covering most of it
+        counts[chrom] = whole_cn if whole_share >= WHOLE or fit.baseline != 2 else normal
+    line = karyotype_line(counts, sex)
+    constitutional = {c: normal_copies(c, sex) for c in CHROMOSOMES}
+    events = _events(cn_bin, length, bins, bands, genes, frac_bin, sub_bin, sex, constitutional)
+    level = line["ploidy_level"]
+    at_level = {c: level_copies(c, sex, level) for c in CHROMOSOMES}
+    against_ploidy = events if level == 2 else _events(cn_bin, length, bins, bands, genes, frac_bin, sub_bin, sex,
+                                                       at_level)
 
     assembly = ASSEMBLY_NAME[build]
     gene_copies = {}
@@ -210,14 +261,17 @@ def describe(seg: pd.DataFrame, fit, sex: str, bins, log_ratio: np.ndarray, band
             gene_copies[g.gene] = int(cn_bin[at[0]])
     cen21 = centromere(bands, "chr21")[1]
     q21 = (bins.chrom == "chr21") & (bins.start >= cen21) & (cn_bin >= 0)
-    return {
+    out = {
         "events": events,
         "gene_copies": gene_copies,
         "chr21q_levels": sorted({int(v) for v in cn_bin[q21]}),
         "iscn": iscn(events, sex, assembly),
         "chromosome_copies": {chrom_label(c): int(v) for c, v in counts.items()},
-        **karyotype_line(counts, sex),
+        **line,
     }
+    if level != 2:
+        out["events_against_ploidy"] = against_ploidy
+    return out
 
 
 def arm_table(seg: pd.DataFrame, copies: np.ndarray, sex: str, bins, log_ratio: np.ndarray, bands) -> List[dict]:
@@ -301,10 +355,7 @@ def karyotype_line(counts: Dict[str, int], sex: str) -> dict:
     level = ploidy_level(total)
     x, y = counts.get("chrX", 0), counts.get("chrY", 0)
     # sex chromosomes expected at the ploidy level: X, XX, XXX, XXXX for a woman; X, XY, XXY, XXYY for a man
-    if sex == "XX":
-        const_x, const_y = level, 0
-    else:
-        const_x, const_y = {1: (1, 0), 2: (1, 1), 3: (2, 1), 4: (2, 2)}[level]
+    const_x, const_y = sex_copies(level, sex)
     sex_text = "X" * min(x, const_x) + "Y" * min(y, const_y) or "-"
     changes = ["-X"] * max(0, const_x - x) + ["-Y"] * max(0, const_y - y)
     changes += ["+X"] * max(0, x - const_x) + ["+Y"] * max(0, y - const_y)

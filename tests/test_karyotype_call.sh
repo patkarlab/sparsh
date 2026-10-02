@@ -1,7 +1,8 @@
 #!/bin/bash
 # Copy-number calling on a synthetic cohort with known answers: normal female and male, trisomy 21, high
-# hyperdiploidy, an AML-like profile, a near-haploid pattern, iAMP21, a subclonal 17p loss, loss of Y and a very
-# shallow sample. CPU only, about a minute. Run from the repository folder:
+# hyperdiploidy, an AML-like profile, a near-haploid pattern, iAMP21, a subclonal 17p loss, loss of Y, a very
+# shallow sample, a diploid sample with shorter changes in fewer cells than its blast percentage allows, and a
+# near-triploid clone. CPU only, a few minutes. Run from the repository folder:
 #   bash tests/test_karyotype_call.sh
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
@@ -19,7 +20,8 @@ step() {
 }
 
 step make_counts "$PYTHON" tests/make_synthetic_counts.py --out_dir "$TMP/counts" --seed "${SEED:-11}"
-printf 'sample,sex,blast_percent\nCASE_LOY_M,M,90\nCASE_T21_M,M,\n' > "$TMP/sheet.csv"
+printf 'sample,sex,blast_percent\nCASE_LOY_M,M,90\nCASE_T21_M,M,\nCASE_FOCAL_F,F,85\nCASE_TRIPLOID_F,F,95\n' \
+    > "$TMP/sheet.csv"
 step call "$PYTHON" scripts/karyotype.py call --counts_dir "$TMP/counts" --out_dir "$TMP/calls" \
               --sample_sheet "$TMP/sheet.csv"
 step refuse_nonempty bash -c "! '$PYTHON' scripts/karyotype.py call --counts_dir '$TMP/counts' \
@@ -91,6 +93,27 @@ assert e17["start"] == 0 and 12e6 <= e17["end"] <= 25e6, e17
 assert e17["subclonal"] and 0.25 <= e17["cell_fraction"] <= 0.55, e17
 assert "loss_17p" in codes(sub)
 
+focal = load("CASE_FOCAL_F")
+# shorter changes only, in 60% of cells with blasts given as 85%: a triploid baseline with 89% puts every level in
+# the same place, but no autosome as a whole lies away from three copies in it, so the baseline stays diploid
+assert focal["baseline_copies"] == 2 and focal["karyotype"] == "46,XX", focal["karyotype"]
+assert "near_triploid" not in codes(focal) and focal["fit"]["unsupported"][0]["baseline"] == 3, focal["fit"]
+assert any(w.startswith("A triploid baseline") and "no autosome as a whole lies away" in w
+           for w in focal["warnings"]), focal["warnings"]
+assert "12p13.2p12.1(11000001_26500000)x1" in focal["iscn"], focal["iscn"]
+
+triploid = load("CASE_TRIPLOID_F")
+# a near-triploid clone is still read as one; chromosomes 5 and 12, changed in part, count three copies, and the
+# flags read the chromosomes at two copies as losses against the triploid level
+assert triploid["baseline_copies"] == 3 and not triploid["fit"]["unsupported"], triploid["fit"]
+assert triploid["karyotype"] == "68<3n>,XXX,-7,+8,-13,-17,+21", triploid["karyotype"]
+assert triploid["ploidy_class"] == "near-triploid" and "events_against_ploidy" in triploid
+assert {"near_triploid", "loss_5q", "loss_7", "loss_12p", "loss_13q", "loss_17p", "complex",
+        "monosomal"} <= codes(triploid), codes(triploid)
+complex_text = next(f["text"] for f in triploid["flags"] if f["code"] == "complex")
+assert "on 7 chromosomes against the triploid level (5, 7, 8, 12, 13, 17, 21)" in complex_text, complex_text
+assert "events_against_ploidy" not in load("CASE_AML_F")
+
 loy = load("CASE_LOY_M")
 assert loy["sex_source"] == "sample sheet" and "(Y)x0" in loy["iscn"] and "loss_of_y" in codes(loy)
 assert 0.7 <= loy["leukaemic_fraction"] <= 1.0
@@ -105,7 +128,7 @@ for name in expect:
     for suffix in (".segments.tsv", ".bins.tsv.gz", ".karyotype.svg", ".karyotype.png"):
         assert (calls / f"{name}{suffix}").exists(), (name, suffix)
 summary = pd.read_csv(calls / "karyotype_summary.csv")
-assert len(summary) == 46 and summary["qc_status"].ne("failed").all()
+assert len(summary) == 48 and summary["qc_status"].ne("failed").all()
 assert (calls / "reference_1000000.tsv.gz").exists()
 fixed = json.load(open(tmp / "calls_2mb" / "CASE_AML_F.karyotype.json"))
 assert fixed["qc"]["bin_size"] == 2000000 and "(7)x1" in fixed["iscn"]

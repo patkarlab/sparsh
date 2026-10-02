@@ -5,6 +5,12 @@ These restate what the profile shows in the terms a haematopathologist looks
 for; they are not a classification. Structural changes that leave copy number
 unchanged (balanced translocations, inversions) are invisible to this method,
 and small deletions such as those of IKZF1 are usually below its resolution.
+
+Gains and losses are read against the ploidy level of the karyotype line (the events against the ploidy level
+of karyotype/nomenclature.py), so that in a near-triploid genome a chromosome at two copies counts as a loss
+and the chromosomes at three copies count as no change. The definitions taken from karyotyping, a complex
+karyotype and a monosomal one, count only changes a karyotype can show: whole chromosomes, arms, and segments
+of 5 Mb or more.
 """
 
 from typing import Dict, List
@@ -20,9 +26,11 @@ AML_MR_REGIONS = [
 ]
 MR_NOTE = ("When found by karyotype, this is among the cytogenetic criteria for acute myeloid leukaemia with "
            "myelodysplasia-related changes.")
+KARYOTYPE_MB = 5.0                     # smallest segment counted as a change a karyotype can show
+LEVEL_NAME = {1: "haploid", 3: "triploid", 4: "tetraploid"}
 
 
-def _loses(events, chrom, arm, min_mb=5.0):
+def _loses(events, chrom, arm, min_mb=KARYOTYPE_MB):
     for e in events:
         if e["chrom"] != chrom or e["type"] != "loss":
             continue
@@ -31,14 +39,16 @@ def _loses(events, chrom, arm, min_mb=5.0):
     return False
 
 
-def _gains(events, chrom, arm, min_mb=5.0):
+def _gains(events, chrom, arm, min_mb=KARYOTYPE_MB):
     return any(e["chrom"] == chrom and e["type"] == "gain" and
                (e["level"] == "whole" or (e["arm"] == arm and (e["level"] == "arm" or e["size_mb"] >= min_mb)))
                for e in events)
 
 
 def lesion_flags(result: Dict, sex: str, fit) -> List[Dict[str, str]]:
-    events = result["events"]
+    events = result.get("events_against_ploidy", result["events"])
+    level = result.get("ploidy_level", 2)
+    against = f" against the {LEVEL_NAME[level]} level" if level in LEVEL_NAME else ""
     n = result["modal_number"]
     cls = result["ploidy_class"]
     out = []
@@ -104,16 +114,17 @@ def lesion_flags(result: Dict, sex: str, fit) -> List[Dict[str, str]]:
             e["chrom"] == "17" and e["level"] == "whole" for e in events):
         add("i17q_pattern", "Loss of 17p with gain of 17q, the pattern of an isochromosome 17q. " + MR_NOTE)
 
-    changed = sorted({e["chrom"] for e in events}, key=lambda c: (c in ("X", "Y"), c.zfill(2)))
+    visible = [e for e in events if e["level"] != "segment" or e["size_mb"] >= KARYOTYPE_MB]
+    changed = sorted({e["chrom"] for e in visible}, key=lambda c: (c in ("X", "Y"), c.zfill(2)))
     # gains alone, as in high hyperdiploidy, do not make a complex karyotype
-    only_gains = all(e["type"] == "gain" for e in events)
+    only_gains = all(e["type"] == "gain" for e in visible)
     if len(changed) >= 3 and not only_gains:
-        add("complex", f"Copy-number changes on {len(changed)} chromosomes ({', '.join(changed)}). In acute "
-                       "myeloid leukaemia a complex karyotype means three or more unrelated abnormalities; balanced "
-                       "changes seen only by karyotype also count, and hyperdiploid karyotypes with only trisomies "
-                       "do not.")
+        add("complex", f"Copy-number changes a karyotype can show (whole chromosomes, arms, or 5 Mb or more) on "
+                       f"{len(changed)} chromosomes{against} ({', '.join(changed)}). In acute myeloid leukaemia a "
+                       "complex karyotype means three or more unrelated abnormalities; balanced changes seen only by "
+                       "karyotype also count, and hyperdiploid karyotypes with only trisomies do not.")
     auto_losses = [e for e in losses if e["chrom"] not in ("X", "Y")]
-    structural = [e for e in events if e["level"] != "whole"]
+    structural = [e for e in visible if e["level"] != "whole"]
     if len(auto_losses) >= 2 or (len(auto_losses) == 1 and structural):
         add("monosomal", "Monosomal pattern: " + ("two or more autosomal monosomies" if len(auto_losses) >= 2 else
                          "an autosomal monosomy with a structural change") + ".")
@@ -121,7 +132,8 @@ def lesion_flags(result: Dict, sex: str, fit) -> List[Dict[str, str]]:
     cdkn2a = [e for e in events if e["type"] == "loss" and "CDKN2A" in e["genes"]]
     if cdkn2a:
         both = any(e["copy_number"] == 0 for e in cdkn2a)
-        add("cdkn2a_loss", "Loss at 9p21.3 including CDKN2A and CDKN2B" + (", with both copies lost" if both else "")
+        add("cdkn2a_loss", "Loss at 9p21.3 including CDKN2A and CDKN2B"
+            + ((", with both copies lost" if level == 2 else ", with every copy lost") if both else "")
             + ". Small deletions of this region are often below the resolution of this method, so its absence "
               "does not exclude them.")
     if sex == "XY" and any(e["chrom"] == "Y" and e["type"] == "loss" for e in events):

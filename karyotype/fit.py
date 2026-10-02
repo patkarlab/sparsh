@@ -40,6 +40,15 @@ give the same profile, and a small leukaemic fraction with large changes can
 mimic a large one with small changes. The best cost for every baseline is
 therefore kept and reported, and a blast percentage from the sample sheet
 limits the fraction when it is known.
+
+A baseline other than two copies is taken only when at least one autosome, over 90% of its fitted length, lies
+at another copy number in that reading. Read depth places a genome on another baseline only through whole
+chromosomes that differ from it: a genome multiplied as a whole looks like a diploid one, and a triploid
+baseline with a fraction p puts every level where a diploid one with the fraction 2p / (p + 2) does. Without
+the rule, a profile with shorter changes only, present in fewer cells than the blast percentage allows, would
+be moved to a triploid or tetraploid baseline merely to reach an allowed fraction, although such changes are
+often present in part of the leukaemic cells. The best reading turned down this way is kept when it costs less
+than the diploid one taken, so that it can be named.
 """
 
 from dataclasses import dataclass, field
@@ -62,6 +71,7 @@ MIN_PARTIAL_BINS = 5                             # a change in part of the cells
 MIN_CHANGE_Z = 4.0                               # standard errors from the normal level to count as a change
 ALTERNATIVE = 40.0                               # other baselines within this of the best cost are considered:
 CLOSE = 6.0                                      # noted when within this, or when hypo- against hyperdiploid
+WHOLE_SHARE = 0.9                                # share of an autosome's fitted bins that makes it whole
 
 
 def expected_log2(c, n, p, m):
@@ -82,6 +92,23 @@ class Fit:
     subclonal: np.ndarray              # explained as a change in part of the cells
     alternatives: List[Dict] = field(default_factory=list)
     estimable: bool = True
+    unsupported: List[Dict] = field(default_factory=list)   # better readings on a baseline no whole autosome leaves
+
+
+def diploid_fraction(p: float, m: int) -> float:
+    """The leukaemic fraction at which a diploid baseline puts every level where baseline m with fraction p does."""
+    return 2.0 * p / (p * m + 2.0 * (1.0 - p))
+
+
+def _whole_autosome_away(chroms: np.ndarray, copies: np.ndarray, nbins: np.ndarray, m: int) -> bool:
+    """Whether any autosome lies, over WHOLE_SHARE of its fitted bins, at a copy number other than m."""
+    for c in np.unique(chroms):
+        on = chroms == c
+        total = nbins[on].sum()
+        for v in np.unique(copies[on]):
+            if v != m and nbins[on & (copies == v)].sum() >= WHOLE_SHARE * total:
+                return True
+    return False
 
 
 def _explain(means, se2, normals, nbins, p, m, d, max_cn):
@@ -122,6 +149,7 @@ def fit_segments(seg: pd.DataFrame, sex: str, sigma: float, max_cn: int = 8,
     """
     means = seg["mean"].to_numpy(dtype=float)
     nbins = seg["n_bins"].to_numpy(dtype=float)
+    chroms = seg["chrom"].to_numpy()
     normals = np.array([normal_copies(c, sex) for c in seg["chrom"]], dtype=float)
     auto = ~seg["chrom"].isin(["chrX", "chrY"]).to_numpy()
     seg_sigma = seg["sigma"].to_numpy(dtype=float) if "sigma" in seg else np.full(len(seg), sigma)
@@ -140,7 +168,7 @@ def fit_segments(seg: pd.DataFrame, sex: str, sigma: float, max_cn: int = 8,
         return Fit(None, 2, 0.0, 0.0, normals.astype(int), np.full(len(seg), np.nan), np.zeros(len(seg), bool),
                    [], estimable=False)
 
-    results = []
+    results, unsupported = [], []
     for m in (1, 2, 3, 4):
         for p in purities:
             d = 0.0
@@ -165,6 +193,10 @@ def fit_segments(seg: pd.DataFrame, sex: str, sigma: float, max_cn: int = 8,
                     continue
             score = float(np.minimum(cost, MAX_SEGMENT_COST).sum()) + PENALTY[m]
             clonal_cn = np.where(partial, m, copies)[au] if au.any() else np.array([m])
+            # another baseline needs a whole autosome away from it (see the notes at the top)
+            if m != 2 and not (au.any() and _whole_autosome_away(chroms[use][au], clonal_cn, nbins[use][au], m)):
+                unsupported.append((score, m, float(p), d))
+                continue
             distance = float(np.sum(np.abs(clonal_cn - m) * nbins[use][au]) / max(1.0, nbins[use][au].sum())) \
                 if au.any() else 0.0
             results.append((score, m, float(p), d, distance))
@@ -182,7 +214,14 @@ def fit_segments(seg: pd.DataFrame, sex: str, sigma: float, max_cn: int = 8,
             r = min(rs, key=lambda r: r[0])
             alternatives.append({"baseline": mm, "purity": r[2], "offset": round(r[3], 4), "score": round(r[0], 2),
                                  "delta": round(r[0] - score, 2)})
-    return explain_all(seg, sex, sigma, p, int(m), d, max_cn, score, alternatives)
+    fit = explain_all(seg, sex, sigma, p, int(m), d, max_cn, score, alternatives)
+    better = [r for r in unsupported if r[0] < score]
+    if better and m == 2:                        # the best reading turned down, when it costs less than the diploid one
+        r = min(better, key=lambda r: r[0])
+        fit.unsupported = [{"baseline": r[1], "purity": r[2], "offset": round(r[3], 4), "score": round(r[0], 2),
+                            "delta": round(r[0] - score, 2),
+                            "diploid_fraction": round(diploid_fraction(r[2], r[1]), 2)}]
+    return fit
 
 
 def explain_all(seg: pd.DataFrame, sex: str, sigma: float, p: float, m: int, d: float, max_cn: int = 8,

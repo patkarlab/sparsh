@@ -52,6 +52,25 @@ CONFIRM = ("The ploidy class, the baseline and the leukaemic fraction are comput
            "them from the plots.")
 
 
+def unsupported_note(alt: dict, purity_range) -> str:
+    """
+    Warning for a reading on another baseline that fits the depths better than the diploid one reported but has no
+    whole autosome away from its baseline (karyotype/fit.py): read depth cannot place a genome on that baseline.
+    """
+    name = {1: "haploid", 3: "triploid", 4: "tetraploid"}[alt["baseline"]]
+    copies = {1: "one copy", 3: "three copies", 4: "four copies"}[alt["baseline"]]
+    text = (f"A {name} baseline with a leukaemic fraction of {alt['purity']:.2f} fits the depths better than the "
+            "reading reported")
+    q = alt.get("diploid_fraction")
+    if purity_range is not None and q is not None and q < purity_range[0] - 0.005:
+        text += (f": it puts every level where a diploid baseline with a fraction of {q:.2f} would, below the range "
+                 "the blast percentage allows")
+    return (text + f". In that reading no autosome as a whole lies away from {copies}, and read depth cannot tell a "
+            "genome multiplied as a whole from a diploid one, so the diploid reading is reported; changes shorter "
+            "than a chromosome are often present in only part of the leukaemic cells. A DNA index by flow cytometry "
+            f"would show a {name} clone.")
+
+
 def detection_limit(sigma: float, bin_size: int, span_bp: int) -> Optional[float]:
     """
     Smallest fraction of cells in which a one-copy gain of span_bp is called: its segment must lie MIN_CHANGE_Z
@@ -157,6 +176,8 @@ def call_sample(sample: Sample, bins_by_size: Dict[int, Bins], references: Dict[
                      f"{alt['karyotype']}) with a leukaemic fraction of {alt['purity']:.2f}, against "
                      f"{result['modal_number']} with {fit.purity:.2f} as reported, which needs smaller changes. "
                      + decide)
+    for alt in fit.unsupported:
+        notes.append(unsupported_note(alt, purity_range))
     median_reads = info.get("median_reads_per_bin")
     status = "ok"
     if median_reads is not None and median_reads < 30:
@@ -187,7 +208,7 @@ def call_sample(sample: Sample, bins_by_size: Dict[int, Bins], references: Dict[
         "baseline_copies": fit.baseline,
         "mean_copies_autosomes": None if ploidy is None else round(ploidy, 2),
         "fit": {"score": None if not np.isfinite(fit.score) else round(fit.score, 2),
-                "alternatives": fit.alternatives, "estimable": fit.estimable},
+                "alternatives": fit.alternatives, "estimable": fit.estimable, "unsupported": fit.unsupported},
         "confirmation": CONFIRM,
         "sequencing": sequencing_summary(sample.meta, build),
         "warnings": notes,
