@@ -81,8 +81,8 @@ def cmd_manifest(args) -> int:
     n_chunked = sum(1 for items in matched.values() if len(items) > 1)
     print(f"{len(names)} samples, {len(listing)} BAM files listed")
     print(f"  matched: {len(matched)} ({n_chunked} with more than one BAM) -> {out}")
-    print(f"  to review (name found only inside a longer path, or a BAM claimed by two samples): {len(review)}"
-          f" -> {review_path}")
+    print(f"  to review (name found only inside a longer path, files of another run, or a BAM claimed by two "
+          f"samples): {len(review)} -> {review_path}")
     print(f"  no BAM found: {len(unmatched)} -> {unmatched_path}")
     print("Rows of the review file can be copied into the manifest once checked.")
     return 0

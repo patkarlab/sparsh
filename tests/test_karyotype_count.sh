@@ -1,5 +1,7 @@
 #!/bin/bash
-# Copy-number counting on synthetic data: manifest matching and read counting through a stand-in object store.
+# Copy-number counting on synthetic data: manifest matching and read counting through a stand-in object store. A
+# file named like a piece of a sample but stored with another run (here S_NORMAL_10, as a dilution would be named) is
+# listed for review, not pooled with the sample.
 # Needs samtools (set SAMTOOLS if it is not on PATH); skipped without it. CPU only, under a minute. Run from the
 # repository folder:
 #   bash tests/test_karyotype_count.sh
@@ -29,7 +31,8 @@ step bams bash -c "$(declare -f bam); PYTHON=$PYTHON SAMTOOLS=$SAMTOOLS
     bam '$TMP/store/run1/S_NORMAL.bam' --reads 20000 --sex XX --seed 1 &&
     bam '$TMP/store/run1/S_ABN.bam' --reads 20000 --sex XY --profile chr21:x3 --seed 2 &&
     bam '$TMP/store/run2/S_CHUNK_0.bam' --reads 10000 --sex XX --seed 3 &&
-    bam '$TMP/store/run2/S_CHUNK_1.bam' --reads 10000 --sex XX --seed 4"
+    bam '$TMP/store/run2/S_CHUNK_1.bam' --reads 10000 --sex XX --seed 4 &&
+    bam '$TMP/store/run2/S_NORMAL_10.bam' --reads 5000 --sex XX --seed 5"
 cat > "$TMP/bin/fakes3" <<EOF
 #!/bin/bash
 [ "\$1" = get ] || exit 2
@@ -57,9 +60,14 @@ tmp = Path(sys.argv[1])
 man = pd.read_csv(tmp / "manifest.tsv", sep="\t")
 assert sorted(man["sample"].unique()) == ["S_ABN", "S_CHUNK", "S_NORMAL"], man
 assert (man["sample"] == "S_CHUNK").sum() == 2
+assert (man["sample"] == "S_NORMAL").sum() == 1 and not man["bam"].str.contains("S_NORMAL_10").any(), man
 review = pd.read_csv(tmp / "manifest_review.tsv", sep="\t")
-assert set(review["sample"]) == {"NORMAL"}, review
+assert set(review["sample"]) == {"NORMAL", "S_NORMAL"}, review
+other_run = review[review["sample"] == "S_NORMAL"]
+assert len(other_run) == 1 and other_run["candidate_bam"].str.endswith("run2/S_NORMAL_10.bam").all(), other_run
+assert (other_run["reason"] == "piece in another folder").all(), other_run
 assert (tmp / "manifest_unmatched.txt").read_text().split() == ["S_MISSING"]
+assert len(json.load(open(tmp / "counts" / "S_NORMAL.counts.json"))["sources"]) == 1
 for s in ("S_NORMAL", "S_ABN", "S_CHUNK"):
     d = json.load(open(tmp / "counts" / f"{s}.counts.json"))
     assert d["reads_counted"] > 15000, (s, d["reads_counted"])
