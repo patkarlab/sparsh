@@ -19,5 +19,17 @@ jobs/logs/
 *.o[0-9]*
 *.e[0-9]*
 
-# demonstration of the README
+# demonstration and examples of the README
 demo/
+results/
+cn_counts/
+cn_calls/
+cn_panel*.tsv.gz
+sparsh_model_*/
+sparsh_model_*.zip
+*.fa
+*.fasta
+*.fai
+EPIC-8v2-0_*.csv
+*.mmi
+/samples.csv

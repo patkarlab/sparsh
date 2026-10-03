@@ -1,6 +1,7 @@
 # Settings read by the batch jobs in jobs/, apart from the copy-number jobs, which take theirs from qsub -v.
-# Set the paths for your system, then check them on the login node:
-#   bash jobs/check_settings.sh
+# Set the paths for your system here, or in a copy of this file given to every job as SETTINGS_FILE
+# (qsub -v SETTINGS_FILE=/path/to/copy,...), then check them on the login node:
+#   bash jobs/check_settings.sh            (training or pipeline after it checks only that part)
 # A value passed with "qsub -v NAME=value" takes precedence over the value here.
 
 # Training data, only read: the pickle of array beta values (docs/TRAINING.md), and optionally a list of

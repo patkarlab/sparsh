@@ -59,11 +59,11 @@ A baseline other than two copies is taken only when, in that reading, at least o
 
 A chromosome whose copy number is the same over at least 90% of its analyzed length is called as a whole. Otherwise each arm that is uniform over 90% of its length is called at arm level, and any other stretch of at least three analysis bins and 1 Mb that differs from its chromosome or arm is a segmental event. On the acrocentric chromosomes 13, 14, 15, 21 and 22 only the long arm is analyzed. The arm table gives, for every arm, its majority copy number and the share of the arm that copy number covers.
 
-The ISCN description follows ISCN 2024 for shallow genome sequencing ("sseq"), written as for microarrays: the build in brackets, only abnormal copy numbers, the sex chromosomes first, whole chromosomes with the same copy number grouped, and the proportion of cells in brackets for a change present in part of them. Segments give the bands at their ends and their coordinates. For example:
+The ISCN description follows ISCN 2024 for shallow genome sequencing ("sseq"), written as for microarrays: the build in brackets, only abnormal copy numbers, the sex chromosomes first, whole chromosomes with the same copy number grouped, whole chromosomes before segments, and the proportion of cells in brackets for a change present in part of them. Segments give the bands at their ends and their coordinates. For example:
 
 ```
 sseq[GRCh37] (X)x3,(4,6,10,14,17,18)x3,(21)x4
-sseq[GRCh37] (7)x1,5q14.3q33.1(83000001_150000000)x1,(8)x3
+sseq[GRCh37] (7)x1,(8)x3,5q14.3q33.1(83000001_150000000)x1
 sseq[GRCh37] 17p13.3p11.2(1_22200000)x1[0.4]
 ```
 

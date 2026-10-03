@@ -16,7 +16,7 @@ python scripts/bedmethyl_to_csv.py --bedmethyl SAMPLE_pileup.bed --manifest EPIC
 
 modkit counts 5-methylcytosine and 5-hydroxymethylcytosine together as modified and reports the two strands of a CpG apart. scripts/bedmethyl_to_csv.py places every probe of Illumina's MethylationEPIC v2.0 manifest at its GRCh37 position (the column MAPINFO_37, with the chromosome of the column CHR, which is the GRCh37 one for all but 55 probes; see docs/PIPELINE.md), adds the calls of the two strands of the probe's CpG, and writes 1 when more than half of them are modified and 0 when fewer than half are; a probe whose calls are split exactly in half is left out. It names the columns by the probe identifier up to its first underscore, so the replicate probes of a CpG give columns of the same name, which prediction combines. A compressed pileup is read as well. `--strands forward` uses the forward strand alone (docs/PIPELINE.md).
 
-Before predicting, scripts/ont_coverage.py reads the files the way prediction will and reports, for each folder, the share of the model's CpGs each sample covers next to the range the model was trained on. It also reports the share of observed values that are exactly 0 or 1, which should be close to 100% for such files, and any repeated probe IDs.
+Before predicting, scripts/ont_coverage.py reads the files the way prediction will and reports, for each folder, what share of the model's CpGs its samples cover (the median, the range and the number of samples per band) next to the range the model was trained on; --output writes one line per sample. It also reports the share of observed values that are exactly 0 or 1, which should be close to 100% for such files, and any repeated probe identifiers.
 
 ## Prediction
 
@@ -42,4 +42,4 @@ The scoring writes evaluation_per_sample.csv, evaluation_by_coverage.csv (in cov
 
 ## Batch jobs
 
-jobs/predict.pbs runs the prediction on a PBS cluster for a model folder in RUNS_DIR (jobs/settings.sh), writing to RUNS_DIR/predictions/<model folder>/ont_eval, for example `qsub -v RUN_NAME=sparsh_model_0.4.0,ONT_DIR=/path/to/samples jobs/predict.pbs`.
+jobs/predict.pbs runs the prediction on a PBS cluster for a model folder in RUNS_DIR (jobs/settings.sh), writing to RUNS_DIR/predictions/<model folder>/ont_eval, for example `qsub -v RUN_NAME=sparsh_model_0.4.0,ONT_DIR=/path/to/samples jobs/predict.pbs`. EVAL_NAME replaces ont_eval, so that each batch gets its own folder, and OUT_DIR sets the whole path; prediction stops at a folder that is not empty unless it is given --overwrite.
