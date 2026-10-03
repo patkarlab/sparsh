@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Synthetic data for the smoke test: a training pickle in the SPARSH format, ONT-like
-CSVs simulated from held-out samples, and a ground-truth file that uses raw
-(pre-merge) labels and one out-of-scheme label, so every code path is exercised.
+Synthetic data for the smoke test: a training pickle in the SPARSH format with classes named as in the released
+model, ONT-like CSVs simulated from held-out samples, and a ground-truth file with one out-of-scheme label, so
+every code path is exercised.
 
     python tests/make_synthetic.py --output_dir /tmp/sparsh_synth
 """
@@ -18,12 +18,10 @@ sys.path.insert(0, str(REPO))
 from models.corruption import corrupt_numpy  # noqa: E402
 
 CLASS_SIZES = {
-    "B-ALL_High hyperdiploid": 120, "AML_KMT2A-r": 90, "AML_mutated NPM1": 60, "AML_NUP98-r": 15,
-    "B-ALL_ETV6-RUNX1": 70, "T-ALL": 50, "B-ALL_BCR-ABL1": 20, "B-ALL_BCR-ABL1 like": 18,
-    "B-ALL_PAX5 alt": 12, "B-ALL_PAX5 P80R": 8, "B-ALL_TCF3-PBX1": 7, "MPAL_BCR-ABL1": 6,
+    "B-ALL_Aneuploidy": 120, "AML_KMT2A-r": 90, "AML_HOXdys_NPM1_NUP98_DEK-NUP214_UBTF": 75,
+    "B-ALL_ETV6-RUNX1": 70, "T-ALL_TAL1-like": 50, "B-ALL_PAX5_BCR-ABL1_BCR-ABL1-Like": 50,
+    "B-ALL_PAX5 P80R": 8, "B-ALL_TCF3-PBX1": 7, "MPAL_BCR-ABL1": 6,
 }
-MERGED = {"AML_mutated NPM1": "HOX", "AML_NUP98-r": "HOX",
-          "B-ALL_BCR-ABL1": "PH", "B-ALL_BCR-ABL1 like": "PH", "B-ALL_PAX5 alt": "PH"}
 
 
 def main():
@@ -42,14 +40,11 @@ def main():
     signatures = {}
     rows, labels, sources = [], [], []
     for ci, (cls, n) in enumerate(CLASS_SIZES.items()):
-        key = MERGED.get(cls, cls)
-        if key not in signatures:
-            idx = rng.choice(p, size=200, replace=False)
-            tgt = base[idx].copy()
-            tgt[:100] = np.where(base[idx[:100]] > 0.5, 0.25, 0.75)
-            tgt[100:] = np.where(base[idx[100:]] > 0.5, 0.55, 0.45)
-            signatures[key] = (idx, tgt)
-        idx, tgt = signatures[key]
+        idx = rng.choice(p, size=200, replace=False)
+        tgt = base[idx].copy()
+        tgt[:100] = np.where(base[idx[:100]] > 0.5, 0.25, 0.75)
+        tgt[100:] = np.where(base[idx[100:]] > 0.5, 0.55, 0.45)
+        signatures[cls] = (idx, tgt)
         for _ in range(n):
             mu = base.copy()
             mu[idx] = tgt
@@ -75,10 +70,10 @@ def main():
 
     # ONT-like samples: new draws from a few classes, read-level simulation at 15-30% coverage
     truth = []
-    picks = ["B-ALL_ETV6-RUNX1", "T-ALL", "AML_mutated NPM1", "AML_KMT2A-r", "B-ALL_High hyperdiploid",
-             "B-ALL_BCR-ABL1", "B-ALL_TCF3-PBX1", "B-ALL_High hyperdiploid"]
+    picks = ["B-ALL_ETV6-RUNX1", "T-ALL_TAL1-like", "AML_HOXdys_NPM1_NUP98_DEK-NUP214_UBTF", "AML_KMT2A-r",
+             "B-ALL_Aneuploidy", "B-ALL_PAX5_BCR-ABL1_BCR-ABL1-Like", "B-ALL_TCF3-PBX1", "B-ALL_Aneuploidy"]
     for k, cls in enumerate(picks):
-        idx, tgt = signatures[MERGED.get(cls, cls)]
+        idx, tgt = signatures[cls]
         mu = base.copy()
         mu[idx] = tgt
         beta = rng.beta(np.clip(mu * 15, 0.3, None), np.clip((1 - mu) * 15, 0.3, None))
@@ -86,7 +81,7 @@ def main():
         sid = f"ONT{k + 1:02d}"
         pd.DataFrame([x], columns=cpgs, index=[sid]).to_csv(out / "ont" / f"{sid}.csv")
         truth.append((sid, cls))
-    truth[-1] = (truth[-1][0], "B-ALL_Low hyperdiploid")        # out-of-scheme label
+    truth[-1] = (truth[-1][0], "B-ALL_NUTM1-r")        # a label that is not a class of the toy model
     pd.DataFrame(truth, columns=["sample", "true_label"]).to_csv(out / "ground_truth.csv", index=False)
     print(f"Wrote {out}/train.pkl ({len(df)} samples, {p} CpGs), {len(picks)} ONT CSVs and ground_truth.csv")
 

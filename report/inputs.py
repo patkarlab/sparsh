@@ -577,6 +577,9 @@ def load_cross_validation(model_dir: Path, threshold: float) -> Optional[CrossVa
         recorded = sorted(c[len("callable_share_"):] for c in binary.columns if c.startswith("callable_share_"))
         warn(f"{metrics_path} has no figures at the threshold {threshold:.2f} (only at {recorded}); the share of "
              "samples called and the accuracy of the calls are left out")
+    elif abs(round(threshold, 2) - threshold) > 1e-9:
+        warn(f"the cross-validation figures are recorded at the threshold {threshold:.2f}, the nearest to the "
+             f"{threshold:g} in force, and the pages say so")
     recall = None
     recall_path = model_dir / "cv_recall_by_class.csv"
     if recall_path.exists():

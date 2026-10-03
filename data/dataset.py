@@ -189,6 +189,10 @@ def load_training_data(
         if gdf["Sample_ID"].str.strip().duplicated().any():
             raise ValueError(f"{groups_file}: a Sample_ID appears more than once")
         gmap = dict(zip(gdf["Sample_ID"].str.strip(), gdf["group"].str.strip()))
+        unknown = set(gmap) - set(sample_ids)
+        if unknown:                                      # a misspelt ID would silently split its group across folds
+            logger.warning(f"  {len(unknown)} Sample_IDs of {groups_file} are not in the data, "
+                           f"e.g. {sorted(unknown)[:3]}")
         groups = np.array([("group:" + gmap[s]) if s in gmap else ("sample:" + s) for s in sample_ids], dtype=object)
         logger.info(f"  Groups from {groups_file}: {len(set(groups))} groups for {len(groups)} samples")
 

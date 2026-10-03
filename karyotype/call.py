@@ -37,7 +37,7 @@ from .plot import plot_chromosomes, plot_genome
 from .reference import load_genes
 from .segment import segment_genome
 
-METHOD = ("Reads with a mapping quality of 20 or more were counted in genomic bins; each profile was corrected "
+METHOD = ("Reads with a mapping quality of {mapq} or more were counted in genomic bins; each profile was corrected "
           "for GC content and divided by the median profile of the other samples of the cohort, segmented by "
           "circular binary segmentation, and fitted with integer copy numbers, a leukemic fraction and a "
           "baseline ploidy. Balanced rearrangements and changes smaller than a few bins are not seen.")
@@ -127,6 +127,10 @@ def call_sample(sample: Sample, bins_by_size: Dict[int, Bins], references: Dict[
     size = bin_size or choose_bin_size(bins_by_size, sample.counts, min_reads)
     bins = bins_by_size[size]
     log_ratio, info = sample_log_ratio(sample, bins, references[size])
+    if info["bins_used"] == 0:
+        # without this check a sample with no usable reference would come out as a normal karyotype
+        raise ValueError(f"no bin has a usable reference ({info['reference_samples']} other samples; a reference "
+                         "needs at least five), so no copy number can be called")
     sigma = chromosome_noise(bins, log_ratio, AUTOSOMES)
     sigmas = {c: sigma for c in AUTOSOMES}
     for c in ("chrX", "chrY"):
@@ -157,10 +161,17 @@ def call_sample(sample: Sample, bins_by_size: Dict[int, Bins], references: Dict[
         classes = {desc["ploidy_class"], result["ploidy_class"]}
         crossing = bool(classes & HYPODIPLOID) and bool(classes & HYPERDIPLOID)
         if crossing or (alt["delta"] <= CLOSE and len(classes) == 2):
-            alt.update({"noted": True, "modal_number": desc["modal_number"], "karyotype": desc["karyotype"],
-                        "ploidy_class": desc["ploidy_class"]})
+            alt.update({"noted": True, "crossing": crossing, "modal_number": desc["modal_number"],
+                        "karyotype": desc["karyotype"], "ploidy_class": desc["ploidy_class"]})
             close.append(alt)
     result["flags"] = lesion_flags(result, sample.sex, fit)
+    for alt in close:
+        if alt["crossing"]:                 # a flag, so that karyotype_summary.csv shows the ambiguity
+            result["flags"].append({"code": "ploidy_ambiguous",
+                                    "text": f"Read depth also fits a {alt['ploidy_class']} genome of "
+                                            f"{alt['modal_number']} chromosomes with a leukemic fraction of "
+                                            f"{alt['purity']:.2f}, on the other side of diploidy from the reading "
+                                            "reported. A DNA index by flow cytometry or a karyotype decides."})
     result["arms"] = arm_table(seg, fit.copies, sample.sex, bins, log_ratio, bands)
 
     auto_seg = ~seg["chrom"].isin(["chrX", "chrY"]).to_numpy()
@@ -169,9 +180,10 @@ def call_sample(sample: Sample, bins_by_size: Dict[int, Bins], references: Dict[
         else None
     notes = list(sample.warnings)
     for alt in close:
-        decide = ("A blast percentage in the sample sheet, which limits the leukemic fraction, would decide between "
-                  "them, as would a DNA index by flow cytometry or a karyotype." if purity_range is None else
-                  "Both agree with the blast percentage given; a DNA index by flow cytometry or a karyotype decides.")
+        decide = ("A blast percentage in the sample sheet, which weighs the leukemic fraction, would help to decide "
+                  "between them, as would a DNA index by flow cytometry or a karyotype." if purity_range is None else
+                  "The blast percentage given weighs in favour of the reading reported; a DNA index by flow "
+                  "cytometry or a karyotype decides.")
         notes.append(f"Read depth also fits {alt['modal_number']} chromosomes ({alt['ploidy_class']}: "
                      f"{alt['karyotype']}) with a leukemic fraction of {alt['purity']:.2f}, against "
                      f"{result['modal_number']} with {fit.purity:.2f} as reported, which needs smaller changes. "
@@ -182,8 +194,8 @@ def call_sample(sample: Sample, bins_by_size: Dict[int, Bins], references: Dict[
     status = "ok"
     if median_reads is not None and median_reads < 30:
         status = "low depth"
-        notes.append(f"Only {median_reads:.0f} reads per bin at the largest bin size: only large changes are "
-                     "reliable.")
+        where = "at the largest bin size" if size == max(bins_by_size) else f"at the bin size of {size // 1000} kb"
+        notes.append(f"Only {median_reads:.0f} reads per bin {where}: only large changes are reliable.")
     if sigma > 0.35:
         status = "noisy" if status == "ok" else status
         notes.append(f"The profile is noisy (bin-to-bin standard deviation {sigma:.2f} of log2 ratio).")
@@ -204,7 +216,7 @@ def call_sample(sample: Sample, bins_by_size: Dict[int, Bins], references: Dict[
         "assembly": ASSEMBLY_NAME[build],
         "sex": sample.sex,
         "sex_source": sample.sex_source,
-        "leukaemic_fraction": fit.purity,
+        "leukemic_fraction": fit.purity,
         "baseline_copies": fit.baseline,
         "mean_copies_autosomes": None if ploidy is None else round(ploidy, 2),
         "fit": {"score": None if not np.isfinite(fit.score) else round(fit.score, 2),
@@ -233,7 +245,8 @@ def call_sample(sample: Sample, bins_by_size: Dict[int, Bins], references: Dict[
             "x_density": _rounded(sample.meta.get("x_density"), 3),
             "y_density_thresholds": sample.meta.get("y_density_thresholds"),
         },
-        "method": METHOD_PANEL.format(n=reference.n_samples) if isinstance(reference, PanelReference) else METHOD,
+        "method": (METHOD_PANEL if isinstance(reference, PanelReference) else METHOD).format(
+            mapq=sample.meta.get("min_mapq", 20), n=getattr(reference, "n_samples", None)),
         "created": time.strftime("%Y-%m-%dT%H:%M:%S"),
     })
     for key in ("5 Mb", "20 Mb"):
@@ -273,7 +286,7 @@ def summary_row(result: dict) -> dict:
     return {
         "sample": result["sample"], "sex": result["sex"], "iscn": result["iscn"], "karyotype": result["karyotype"],
         "modal_number": result["modal_number"], "ploidy_class": result["ploidy_class"],
-        "leukaemic_fraction": result["leukaemic_fraction"], "baseline_copies": result["baseline_copies"],
+        "leukemic_fraction": result["leukemic_fraction"], "baseline_copies": result["baseline_copies"],
         "flags": "; ".join(f["code"] for f in result["flags"]), "qc_status": result["qc"]["status"],
         "bin_size": result["qc"]["bin_size"], "median_reads_per_bin": result["qc"]["median_reads_per_bin"],
         "noise_log2": result["qc"]["noise_log2"], "warnings": " | ".join(result["warnings"]),
@@ -331,7 +344,7 @@ def call_cohort(samples: List[Sample], reference_samples: List[Sample], table: p
         write_sample(out_dir, called, build, plot)
         r = called["result"]
         rows.append(summary_row(r))
-        frac = "not estimable" if r["leukaemic_fraction"] is None else f"{r['leukaemic_fraction']:.2f}"
+        frac = "not estimable" if r["leukemic_fraction"] is None else f"{r['leukemic_fraction']:.2f}"
         log(f"  {r['sample']}: {r['karyotype']} | fraction {frac} | {r['iscn']}")
     summary = pd.DataFrame(rows)
     summary.to_csv(out_dir / "karyotype_summary.csv", index=False)

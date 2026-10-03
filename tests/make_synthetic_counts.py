@@ -41,6 +41,11 @@ CASES = {
     # shorter changes only, in fewer cells than the sample sheet's blast percentage allows: still diploid
     "CASE_FOCAL_F": ("XX", 0.6, 400, [("chr12", 11_000_000, 26_500_000, 1), ("chr14", 100_000_000, 105_500_000, 0),
                                       ("chr10", 95_000_000, 100_000_000, 0), ("chr2", 239_500_000, None, 3)]),
+    # a high hyperdiploid genome of 61 chromosomes with sixteen gains, more than half of the autosomal length, at 88%
+    # leukemic cells: without the blast percentage read depth cannot tell it from a low hypodiploid clone of 38
+    "CASE_HEH61_F": ("XX", 0.88, 110, [(c, 0, None, 3) for c in ("chrX", "chr2", "chr4", "chr5", "chr6", "chr8",
+                                                                  "chr10", "chr11", "chr14", "chr16", "chr17",
+                                                                  "chr18", "chr22")] + [("chr21", 0, None, 4)]),
     # a near-triploid clone of 68 chromosomes: 7, 13 and 17 at two copies, 8 and 21 at four, and parts of 5q and 12p
     # at two copies
     "CASE_TRIPLOID_F": ("XX", 0.95, 110, [(c, 0, None, 3) for c in AUTOSOMES + ["chrX"]]

@@ -14,7 +14,7 @@ ISCN
     each item, and the proportion of cells in brackets for a change present in part of them, for example
 
         sseq[GRCh37] (X)x3,(4,6,10,14,17,18)x3,(21)x4
-        sseq[GRCh37] (7)x1,(8)x3,5q14.3q33.1(83000001_150000000)x1
+        sseq[GRCh37] (7)x1,(8)x3,5q14.3q33.1(85000001_150000000)x1
         sseq[GRCh37] 17p13.3p11.2(1_22200000)x1[0.4]
 
     The order of the items is SPARSH's own: first the whole chromosomes, the sex chromosomes before the
@@ -29,9 +29,9 @@ Karyotype line
     The number of chromosomes and the whole-chromosome gains and losses, as a karyotype would give them,
     for example 55,XX,+X,+4,+6,+10,+14,+17,+18,+21,+21. The line is written against the ploidy level of
     the ploidy class, as acute leukemias are usually described: near-haploid genomes (up to 30 chromosomes)
-    against the haploid level, with <1n>, near-triploid genomes (68 to 79) against the triploid level, with
+    against the haploid level, with <n>, near-triploid genomes (66 to 79) against the triploid level, with
     <3n>, near-tetraploid genomes (80 or more) against the tetraploid level, with <4n>, and everything from
-    31 to 67 chromosomes, hypodiploid and high hyperdiploid genomes included, against the diploid level.
+    31 to 65 chromosomes, hypodiploid and high hyperdiploid genomes included, against the diploid level.
     It rests on read depth only: structural changes, balanced rearrangements and the arrangement of the
     extra material are not seen. A chromosome changed in part keeps its count: two copies on a diploid
     baseline, and on another baseline, where the copies of the rest of such a chromosome are not known
@@ -74,7 +74,7 @@ def ploidy_class(n: int) -> str:
         return "diploid"
     if n <= 50:
         return "low hyperdiploid"
-    if n <= 67:
+    if n <= 65:
         return "high hyperdiploid"
     if n <= 79:
         return "near-triploid"
@@ -86,13 +86,13 @@ def ploidy_class(n: int) -> str:
 def ploidy_level(n: int) -> int:
     """
     Ploidy level a karyotype of n chromosomes is written against: that of its ploidy class (see ploidy_class), so
-    that a high hyperdiploid leukemia of up to 67 chromosomes is written with gains against the diploid level.
-    ISCN's own ranges (up to 34, 35 to 57, 58 to 80, 81 or more) would write 58 to 67 chromosomes against the
+    that a high hyperdiploid leukemia of up to 65 chromosomes is written with gains against the diploid level.
+    ISCN's own ranges (up to 34, 35 to 57, 58 to 80, 81 or more) would write 58 to 65 chromosomes against the
     triploid level, as losses, which is not how high hyperdiploid leukemia is read.
     """
     if n <= 30:
         return 1
-    if n <= 67:
+    if n <= 65:
         return 2
     if n <= 79:
         return 3
@@ -304,7 +304,7 @@ def arm_table(seg: pd.DataFrame, copies: np.ndarray, sex: str, bins, log_ratio: 
             rows.append({"arm": f"{chrom_label(chrom)}{arm}", "copy_number": int(cn), "normal_copies": int(normal),
                          "share_of_arm": round(share, 3),
                          "log2_ratio": round(float(np.mean(log_ratio[chosen])), 3),
-                         "analysed_mb": round(float(length[mask].sum()) / 1e6, 1),
+                         "analyzed_mb": round(float(length[mask].sum()) / 1e6, 1),
                          "call": "gain" if cn > normal else "loss" if cn < normal else "normal"})
     return rows
 
@@ -367,6 +367,6 @@ def karyotype_line(counts: Dict[str, int], sex: str) -> dict:
         delta = counts.get(chrom, 2) - level
         label = chrom_label(chrom)
         changes += [f"+{label}"] * max(0, delta) + [f"-{label}"] * max(0, -delta)
-    marker = {1: "<1n>", 3: "<3n>", 4: "<4n>"}.get(level, "")
+    marker = {1: "<n>", 3: "<3n>", 4: "<4n>"}.get(level, "")
     line = f"{total}{marker},{sex_text}" + ("," + ",".join(changes) if changes else "")
     return {"karyotype": line, "modal_number": total, "ploidy_class": ploidy_class(total), "ploidy_level": level}

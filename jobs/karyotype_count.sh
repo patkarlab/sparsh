@@ -44,6 +44,8 @@ fi
 mkdir -p "$OUT_DIR/logs"
 
 count_one() {
+    # this function runs in child shells started by xargs, which do not inherit the options set above
+    set -o pipefail
     local sample=$1 safe log status
     safe=$(printf '%s' "$sample" | sed -E 's/[^A-Za-z0-9._-]+/_/g')
     [ -f "$OUT_DIR/$safe.counts.json" ] && { echo "skip  $sample (already counted)"; return 0; }

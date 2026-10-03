@@ -24,8 +24,8 @@ AML_MR_REGIONS = [
     ("loss_13q", "13", "q", "Monosomy 13 or loss of 13q"),
     ("loss_17p", "17", "p", "Loss of 17p (TP53 region) or monosomy 17"),
 ]
-MR_NOTE = ("When found by karyotype, this is among the cytogenetic criteria for acute myeloid leukemia with "
-           "myelodysplasia-related changes.")
+MR_NOTE = ("When found by karyotype, this is among the cytogenetic criteria for acute myeloid leukemia, "
+           "myelodysplasia-related.")
 KARYOTYPE_MB = 5.0                     # smallest segment counted as a change a karyotype can show
 LEVEL_NAME = {1: "haploid", 3: "triploid", 4: "tetraploid"}
 
@@ -67,19 +67,22 @@ def lesion_flags(result: Dict, sex: str, fit) -> List[Dict[str, str]]:
                                               if e["copy_number"] - e["normal_copies"] > 1 else "") for e in gains)
     alt = {a["baseline"]: a for a in fit.alternatives}
 
-    # hypodiploid genomes: the losses are the ploidy, not separate lesions
-    if cls in ("near-haploid", "low hypodiploid"):
-        two = [chrom for chrom, c in result["chromosome_copies"].items() if c >= 2]
+    # hypodiploid genomes: the losses are the ploidy, not separate lesions, so the flags that count losses
+    # (the myelodysplasia-related regions, the complex and the monosomal pattern) are left out for them
+    losses_are_ploidy = cls in ("near-haploid", "low hypodiploid")
+    if losses_are_ploidy:
+        copies = result["chromosome_copies"]
+        once = sum(1 for chrom, c in copies.items() if c == 1 and chrom not in ("X", "Y"))
+        two = [chrom for chrom, c in copies.items() if c >= 2]
         doubled = alt.get(2)
         add("hypodiploid",
-            f"{cls[0].upper() + cls[1:]}: {n} chromosomes, most present once"
+            f"{cls[0].upper() + cls[1:]}: {n} chromosomes, {once} autosomes present once"
             + (f", with two or more copies of {', '.join(two)}" if two else "") + ". The same profile is given "
             "by this clone after doubling (twice as many chromosomes, masked hypodiploidy), which read depth "
             "cannot tell apart" + (" (the doubled fit is almost as good)" if doubled and doubled["delta"] < 15 else "")
             + ". Confirm with a DNA index by flow cytometry and a single-nucleotide polymorphism array or a "
               "karyotype.")
-        return out
-    if cls == "high hypodiploid":
+    elif cls == "high hypodiploid":
         add("hypodiploid", f"High hypodiploidy: {n} chromosomes. Confirm with a DNA index by flow cytometry and a "
                            "karyotype.")
     elif cls == "high hyperdiploid":
@@ -87,8 +90,11 @@ def lesion_flags(result: Dict, sex: str, fit) -> List[Dict[str, str]]:
     elif cls in ("near-triploid", "near-tetraploid"):
         add(cls.replace("-", "_"), f"{cls[0].upper() + cls[1:]}: {n} chromosomes.")
 
-    if result.get("ploidy_level") == 2 and len(gains) >= 2 and \
-            all(e["copy_number"] - e["normal_copies"] >= 2 for e in gains):
+    # a doubled near-haploid clone has four copies of its disomic autosomes; the sex chromosomes do not count,
+    # since a man's single X is at two copies after doubling
+    autosomal_gains = [e for e in gains if e["chrom"] not in ("X", "Y")]
+    if result.get("ploidy_level") == 2 and len(autosomal_gains) >= 2 and \
+            all(e["copy_number"] - e["normal_copies"] >= 2 for e in autosomal_gains):
         near_haploid = alt.get(1)
         extra = ""
         if near_haploid is not None and near_haploid["delta"] < 15:
@@ -108,9 +114,9 @@ def lesion_flags(result: Dict, sex: str, fit) -> List[Dict[str, str]]:
         add("runx1_amplified", f"{runx1} copies of the RUNX1 region on 21q22.")
 
     for code, chrom, arm, text in AML_MR_REGIONS:
-        if _loses(events, chrom, arm):
+        if not losses_are_ploidy and _loses(events, chrom, arm):
             add(code, f"{text}. {MR_NOTE}")
-    if _loses(events, "17", "p") and _gains(events, "17", "q") and not any(
+    if not losses_are_ploidy and _loses(events, "17", "p") and _gains(events, "17", "q") and not any(
             e["chrom"] == "17" and e["level"] == "whole" for e in events):
         add("i17q_pattern", "Loss of 17p with gain of 17q, the pattern of an isochromosome 17q. " + MR_NOTE)
 
@@ -118,14 +124,14 @@ def lesion_flags(result: Dict, sex: str, fit) -> List[Dict[str, str]]:
     changed = sorted({e["chrom"] for e in visible}, key=lambda c: (c in ("X", "Y"), c.zfill(2)))
     # gains alone, as in high hyperdiploidy, do not make a complex karyotype
     only_gains = all(e["type"] == "gain" for e in visible)
-    if len(changed) >= 3 and not only_gains:
+    if len(changed) >= 3 and not only_gains and not losses_are_ploidy:
         add("complex", f"Copy-number changes a karyotype can show (whole chromosomes, arms, or 5 Mb or more) on "
                        f"{len(changed)} chromosomes{against} ({', '.join(changed)}). In acute myeloid leukemia a "
                        "complex karyotype means three or more unrelated abnormalities; balanced changes seen only by "
                        "karyotype also count, and hyperdiploid karyotypes with only trisomies do not.")
     auto_losses = [e for e in losses if e["chrom"] not in ("X", "Y")]
     structural = [e for e in visible if e["level"] != "whole"]
-    if len(auto_losses) >= 2 or (len(auto_losses) == 1 and structural):
+    if not losses_are_ploidy and (len(auto_losses) >= 2 or (len(auto_losses) == 1 and structural)):
         add("monosomal", "Monosomal pattern: " + ("two or more autosomal monosomies" if len(auto_losses) >= 2 else
                          "an autosomal monosomy with a structural change") + ".")
 

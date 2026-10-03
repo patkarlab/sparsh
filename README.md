@@ -139,11 +139,11 @@ These figures describe single networks on simulated reads. The performance on na
 ### Software
 
 - 64-bit Linux, with bash 4 or later for the batch jobs and the tests (macOS does not have it by default).
-- Python 3.10 to 3.12 with PyTorch 2.0 or later, NumPy 1.24 or later, pandas 2.0 or later, SciPy 1.10 or later, scikit-learn 1.3 or later and matplotlib 3.7 or later. Optuna 3.6 or later is needed only by scripts/tune.py.
+- Python 3.10 to 3.13 with PyTorch 2.0 or later, NumPy 1.24 or later, pandas 2.0 or later, SciPy 1.10 or later, scikit-learn 1.3 or later and matplotlib 3.7 or later. Optuna 3.6 or later is needed only by scripts/tune.py.
 - samtools 1.17 or later (https://www.htslib.org), to merge, sort and index reads, to return aligned reads to unaligned ones (samtools reset), and to count reads for the copy number.
 - modkit (https://github.com/nanoporetech/modkit), for the methylation calls. The article's samples were processed with modkit 0.6.1, and envs/sparsh.yml installs that version.
 - For reads that are not yet aligned to the reference: dorado (https://github.com/nanoporetech/dorado), tested in version 1.3.0, or minimap2 2.24 or later (https://github.com/lh3/minimap2).
-- Optionally a PBS batch system, for the jobs in jobs/.
+- Optionally a PBS batch system (PBS Pro or OpenPBS, whose select syntax the jobs use), for the jobs in jobs/.
 
 envs/sparsh.yml installs all of these except dorado; see [Installation](#installation). Versions that SPARSH has run with:
 
@@ -292,7 +292,7 @@ S01: 2 BAM file(s) -> /path/to/results/S01
 Report: /path/to/results/S01/S01.report.html
 ```
 
-The toy genome is too small for a copy-number call. On a real run most of the time goes into alignment, when it is needed, and into modkit: on 16 processor cores, a sample of 54 hourly BAM files already aligned to the reference took about 15 minutes, 2 to merge and sort, 9 for modkit and the model's input, 1 to predict and 2 for the copy number. The run writes, among other files:
+The toy genome is too small for a copy-number call. On a real run most of the time goes into alignment, when it is needed, and into modkit: of the 15 minutes of the sample in [Hardware](#hardware), 2 went to merging and sorting, 9 to modkit and the model's input, 1 to prediction and 2 to the copy number. The run writes, among other files:
 
 ```
 results/S01/
@@ -350,26 +350,27 @@ predictions.csv has one row per sample, with these columns:
 
 - sample, file, n_columns, n_matched, n_observed, coverage_pct and n_repeated_probes: the input file and the share of the model's CpGs it covers;
 - prediction, confidence, top2_class, top2_prob, top3_class and top3_prob: the three most probable classes;
-- callable and note: whether the most probable class reaches the threshold, and a note on samples whose coverage is below the minimum;
+- callable and note: whether the sample can be called, that is, its coverage reaches the minimum and its most probable class the threshold; and a note on samples whose coverage is below the minimum;
 - family, family_prob, lineage and lineage_prob: the family and the lineage with their summed probabilities;
 - reported_call and reported_level: the call and its level (subtype, family, lineage or none);
 - prob_ followed by a class name: the probability of every class.
 
-Selected columns of the predictions of the synthetic demo (see [Training on your own data](#training-on-your-own-data)), aligned for reading, show two of the levels:
+Selected columns of the predictions of the synthetic demo (see [Training on your own data](#training-on-your-own-data)), aligned for reading, show three of the levels:
 
 ```
-sample  coverage_pct  prediction               confidence  lineage  lineage_prob  reported_call                reported_level
-ONT05   26.66667      B-ALL_High hyperdiploid  0.66494     B-ALL    0.98295       B-ALL, subtype undetermined  lineage
-ONT01   27.50000      B-ALL_ETV6-RUNX1         0.69561     B-ALL    0.82888       not callable                 none
+sample  coverage_pct  prediction        confidence  lineage  lineage_prob  reported_call                reported_level
+ONT07   27.63333      B-ALL_TCF3-PBX1   0.90104     B-ALL    0.97493       B-ALL_TCF3-PBX1              subtype
+ONT05   26.66667      B-ALL_Aneuploidy  0.76567     B-ALL    0.99709       B-ALL, subtype undetermined  lineage
+ONT01   27.50000      B-ALL_ETV6-RUNX1  0.56306     B-ALL    0.65366       not callable                 none
 ```
 
-In ONT05 no class reaches 0.90, but the B-lymphoblastic classes together reach 0.98, so the lineage is reported. In ONT01 the lineage reaches only 0.83, and nothing is reported.
+In ONT07 the most probable class reaches 0.90 and is reported. In ONT05 no class does, but the B-lymphoblastic classes together reach 0.99, so the lineage is reported. In ONT01 the lineage reaches only 0.65, and nothing is reported.
 
 scripts/report.py writes one self-contained HTML page per sample, written for a hematologist to read and print, and an index page that lists every sample. A page gives the call with its probability, the class probabilities, the interpretation of the class with the tests that confirm it, the copy-number karyotype when one was called, the evidence from cross-validation at a coverage like the sample's, and the input and its quality. The interpretation text comes from configs/interpretation.json and is marked as a draft until a hematopathologist has reviewed it. docs/REPORTS.md describes the pages.
 
 ### The copy-number karyotype
 
-The reads of the same run give read depth along the genome. scripts/karyotype.py counts reads in bins of 100,000 bases, streaming each BAM file once. It then corrects each sample for GC content and divides it by the median profile of the other samples of the cohort, or, for a single new sample, by a stored reference made once from such a cohort. Finally it segments the genome, fits integer copy numbers with the leukemic fraction and the baseline ploidy, and writes the result in ISCN 2024 notation for shallow sequencing. It also writes a karyotype line, flags for lesions that matter in acute leukemia (high hyperdiploidy, a doubled hypodiploid clone, intrachromosomal amplification of chromosome 21, the losses that count toward acute myeloid leukemia with myelodysplasia-related changes, loss of CDKN2A), and figures of the genome and of each chromosome for review by eye.
+The reads of the same run give read depth along the genome. scripts/karyotype.py counts reads in bins of 100,000 bases, streaming each BAM file once. It then corrects each sample for GC content and divides it by the median profile of the other samples of the cohort, or, for a single new sample, by a stored reference made once from such a cohort. Finally it segments the genome, fits integer copy numbers with the leukemic fraction and the baseline ploidy, and writes the result in ISCN 2024 notation for shallow sequencing. It also writes a karyotype line, flags for lesions that matter in acute leukemia (high hyperdiploidy, a doubled hypodiploid clone, intrachromosomal amplification of chromosome 21, the losses that count toward acute myeloid leukemia, myelodysplasia-related, loss of CDKN2A), and figures of the genome and of each chromosome for review by eye.
 
 On the synthetic cohort of the test suite (tests/make_synthetic_counts.py), three samples called against a panel of the cohort's 36 background samples give:
 
@@ -413,38 +414,38 @@ Training ends with the outer folds scored under each simulated condition (binary
 ```
   condition  accuracy  balanced_accuracy  top2_accuracy  callable_share_0.90  accuracy_callable_0.90   ece
       dense     1.000              1.000          1.000                1.000                   1.000 0.000
-binary_0.05     0.410              0.444          0.635                0.004                   1.000 0.027
-binary_0.10     0.624              0.637          0.817                0.070                   0.970 0.083
-binary_0.20     0.841              0.880          0.947                0.473                   0.973 0.055
-binary_0.30     0.930              0.929          0.985                0.745                   0.991 0.025
-binary_0.50     0.992              0.994          1.000                0.953                   0.998 0.014
+binary_0.05     0.480              0.497          0.677                0.002                   1.000 0.088
+binary_0.10     0.648              0.647          0.813                0.079                   0.946 0.083
+binary_0.20     0.822              0.868          0.926                0.490                   0.991 0.048
+binary_0.30     0.936              0.936          0.981                0.722                   1.000 0.044
+binary_0.50     0.994              0.995          0.998                0.964                   0.998 0.008
 ```
 
 Prediction and the reports then print, among other lines:
 
 ```
 Model: demo/model (ensemble, 3 network(s), 3000 CpGs, 8 classes)
-Predicted 8 samples (0 unreadable); coverage median 23.4% (range 20.1-27.6%); callable at >= 0.90: 0
-Reported at: subtype 0, no_subtype 0, family 0, lineage 4, none 4
+Predicted 8 samples (0 unreadable); coverage median 23.4% (range 20.1-27.6%); callable at >= 0.90: 2
+Reported at: subtype 2, no_subtype 0, family 0, lineage 3, none 3
 ...
-Reports for 8 samples: subtype 0, no_subtype 0, family 0, lineage 4, none 4
+Reports for 8 samples: subtype 2, no_subtype 0, family 0, lineage 3, none 3
 Written to demo/reports: index.html, cases/ (8 pages), report_summary.csv
 ```
 
-The toy model trains only briefly, so its probabilities stay low. Its most probable class was right for all seven samples whose true class is one of its classes, but none reached 0.90, and its calls stay at the level of the lineage or below the threshold. demo/predictions/summary_metrics.json gives these scores against demo/data/ground_truth.csv: an accuracy of the most probable class of 1.0 for those seven, and 0.875 over all eight, the eighth counting as an error because its true class is not in the toy model. Other hardware or library versions can give slightly different numbers. demo/reports/index.html links the eight report pages; the report step warns that the interpretation text has no entry for five of the toy model's classes, whose pages then use the class name and a neutral sentence.
+The toy model trains only briefly, so most of its probabilities stay below the threshold: its most probable class was right for all seven samples whose true class is one of its classes, two of them reached 0.90 and are reported as subtypes, three are reported at the level of the lineage, and three are not callable. demo/predictions/summary_metrics.json scores the predictions against demo/data/ground_truth.csv (an accuracy of 0.875 over the eight samples; the eighth counts as an error because its true class is not in the toy model), and demo/reports/index.html links the eight report pages. The report step warns that the interpretation text has no entry for one of the toy model's classes, whose pages use the class name and a neutral sentence. Other hardware or library versions can give slightly different numbers.
 
 ### Training data
 
 The training data are one pickle file holding a pandas DataFrame with one row per array: beta values between 0 and 1 in columns named by their probe identifiers (cg...), the class in the column ANNOTATION, the array's name in Sample_ID (otherwise the index names it), and optionally its study in Source_Dataset. Missing values are allowed. The synthetic data of the first try look like this:
 
 ```
-     Sample_ID  cg00000000  cg00000001  cg00000002  ...               ANNOTATION Source_Dataset
-0    GSM100000       0.786       0.353       0.805  ...  B-ALL_High hyperdiploid          GSE_B
-270  GSM100270       0.823       0.552       0.710  ...              AML_NUP98-r          GSE_B
-405  GSM100405       0.977       0.629       0.779  ...           B-ALL_BCR-ABL1          GSE_B
+     Sample_ID  cg00000000  cg00000001  cg00000002  ...                             ANNOTATION Source_Dataset
+0    GSM100000       0.786       0.353       0.805  ...                       B-ALL_Aneuploidy          GSE_B
+270  GSM100270       0.823       0.552       0.710  ...  AML_HOXdys_NPM1_NUP98_DEK-NUP214_UBTF          GSE_A
+405  GSM100405       0.977       0.629       0.779  ...      B-ALL_PAX5_BCR-ABL1_BCR-ABL1-Like          GSE_A
 ```
 
-configs/label_map.json merges raw labels into model classes before training. The training arrays and labels of the released model are not part of this repository; they come from published studies and from the developers' own patients, and the article lists the sources.
+configs/label_map.json can merge raw labels into model classes before training; it is empty for the released model, whose training labels already carried its class names. The training arrays and labels of the released model are not part of this repository; they come from published studies and from the developers' own patients, and the article lists the sources.
 
 ### Training
 
@@ -456,7 +457,7 @@ python scripts/train.py @configs/recipe_v0.4.0.args --data_path arrays.pkl --out
 python scripts/predict.py --model_dir runs/my_model --ont_dir samples --output_dir predictions/my_model
 ```
 
-scripts/check_data.py counts the classes, sets class against source study, and finds near-identical arrays, which it writes to groups.csv so that they stay on the same side of every cross-validation split. configs/recipe_v0.4.0.args holds the recipe of the released model, read with a leading @. The recipe leaves out two classes of that model's training data by name and dilutes with a class named Normal_Control_BM, so for other data give --exclude_classes (with the classes to leave out, or none) and --normal_class after it. jobs/train.pbs runs the same as a batch job on a PBS cluster (docs/TRAINING.md); the released recipe took about an hour on one NVIDIA H200 for 2,845 arrays.
+scripts/check_data.py counts the classes, sets class against source study, and finds near-identical arrays, which it writes to groups.csv so that they stay on the same side of every cross-validation split. configs/recipe_v0.4.0.args holds the recipe of the released model, read with a leading @. The recipe leaves out two classes of that model's training data by name and dilutes with a class named Normal_Control_BM, so for other data give --exclude_classes (with the classes to leave out, or none) and --normal_class after it. jobs/train.pbs runs the same as a batch job on a PBS cluster (docs/TRAINING.md).
 
 Training runs a nested five-fold cross-validation. Within each outer fold, an inner validation split of about one seventh sets early stopping and the temperature of the fold's network, and the outer fold is scored once, under the same simulated conditions in every run, so runs can be compared directly. The five fold networks form the deployed model, which scripts/predict.py and scripts/run_sample.py take as --model_dir like the released one. A run writes, among other files:
 

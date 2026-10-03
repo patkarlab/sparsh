@@ -11,10 +11,15 @@ between 0 and 1. Missing CpGs may be absent, empty, NA or NaN.
 
 Repeated probe IDs (the same cg... in more than one column) are combined by
 the `duplicates` rule:
-  mean  : the mean of the copies that have a value (default);
-  first : the first column only, as a pandas reader does implicitly (it renames
-          later copies cg....1, cg....2, which then match no model CpG);
-  error : the file is refused.
+  mean     : the mean of the copies that have a value (default);
+  majority : 1 when more than half of the copies with a value are 1, 0 when
+             fewer than half are, missing when they are split evenly, so that
+             a file of calls stays a file of calls (the mean of two copies
+             that disagree is 0.5, a value the released model never saw);
+  first    : the first column only, as a pandas reader does implicitly (it
+             renames later copies cg....1, cg....2, which then match no model
+             CpG);
+  error    : the file is refused.
 Whatever the rule, info reports how many probes were repeated and how the
 copies relate, so the rule can be checked against the data.
 """
@@ -27,7 +32,7 @@ import numpy as np
 import pandas as pd
 
 MISSING_TOKENS = {"", "na", "nan", "null", "none"}
-DUPLICATE_RULES = ("mean", "first", "error")
+DUPLICATE_RULES = ("mean", "majority", "first", "error")
 
 
 def read_ont_csv(path: str, cpg_ids: List[str], duplicates: str = "mean") -> Tuple[np.ndarray, Dict[str, float]]:
@@ -85,7 +90,9 @@ def read_ont_csv(path: str, cpg_ids: List[str], duplicates: str = "mean") -> Tup
                          "between 0 and 1; if these are percentages, divide by 100 upstream.")
     if len(finite) and finite.min() < -1e-6:
         raise ValueError(f"{path.name}: negative values")
-    values = values.where(np.isfinite(values))           # inf -> NaN before combining copies
+    infinite = np.isinf(values.to_numpy(dtype=float))
+    if infinite.any():                                   # "inf" passes pd.to_numeric; it is not a methylation value
+        raise ValueError(f"{path.name}: {int(infinite.sum())} infinite values")
 
     first = values[~index.duplicated(keep="first")]
     stats = {"n_repeated_probes": 0, "max_copies": 1, "n_repeated_multi_observed": 0, "n_repeated_disagree": 0}
@@ -97,7 +104,11 @@ def read_ont_csv(path: str, cpg_ids: List[str], duplicates: str = "mean") -> Tup
         stats = {"n_repeated_probes": int(len(n_obs)), "max_copies": int(groups.size().max()),
                  "n_repeated_multi_observed": int(multi.sum()),
                  "n_repeated_disagree": int((multi & (spread > 1e-6)).sum())}
-        combined = values.groupby(level=0, sort=False).mean() if duplicates == "mean" else first
+        if duplicates == "majority":
+            means = values.groupby(level=0, sort=False).mean()
+            combined = means.where(means != 0.5, np.nan).round()
+        else:
+            combined = values.groupby(level=0, sort=False).mean() if duplicates == "mean" else first
     else:
         combined = values
 

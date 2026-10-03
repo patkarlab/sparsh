@@ -42,7 +42,8 @@ def parse_args():
     p.add_argument("--top_variable", type=int, default=10000, help="CpGs used for the correlation check")
     p.add_argument("--dup_threshold", type=float, default=0.98)
     p.add_argument("--probe_annotation", default=None,
-                   help="Optional CSV with probe ID and chromosome columns (e.g. from the Illumina manifest)")
+                   help="Optional plain CSV with a probe ID column and a chromosome column, such as a two-column "
+                        "extract of the Illumina manifest (the manifest itself, with its preamble, is not read)")
     return p.parse_args()
 
 

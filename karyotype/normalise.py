@@ -10,8 +10,9 @@ bin is scaled by the number of 100 kb bins it actually holds.
 
 GC correction is done per sample: the median read density of autosomal bins
 is taken within narrow classes of GC content, a cubic curve is laid through
-those medians, and every bin is divided by the value of the curve at its GC. Medians keep the correction robust to real gains and losses.
-The one percent of bins with the most extreme GC content (for example the
+those medians, and every bin is divided by the value of the curve at its GC.
+Medians keep the correction robust to real gains and losses. The one percent
+of bins with the most extreme GC content (for example the
 GC-rich ends of chromosomes 16, 17 and 19) are left out, because there the
 correction rests on too few bins.
 

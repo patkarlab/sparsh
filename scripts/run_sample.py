@@ -52,7 +52,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 STEPS = ("bam", "methylation", "prediction", "copy_number", "report")
-MODKIT_ARGS = ["--modified-bases", "5mC", "5hmC", "--combine-mods", "--cpg"]
+MODKIT_ARGS = ["--modified-bases", "5mC", "5hmC", "--combine-mods", "--cpg", "--suppress-progress"]
 TESTED_VERSIONS = {"modkit": "0.6.1", "dorado": "1.3.0"}
 
 
@@ -78,8 +78,11 @@ class Runner:
             args = ["bash", "-o", "pipefail", "-c", cmd]
         else:
             args = [str(c) for c in cmd]
-        with (open(stdout, "wb") if stdout else open(os.devnull, "wb")) as out:
-            result = subprocess.run(args, stdout=out if stdout else self.log, stderr=self.log)
+        if stdout:
+            with open(stdout, "wb") as out:
+                result = subprocess.run(args, stdout=out, stderr=self.log)
+        else:
+            result = subprocess.run(args, stdout=self.log, stderr=self.log)
         self.log.flush()
         if result.returncode != 0:
             raise StepError(f"command failed (status {result.returncode}): {shown[:200]}; see run.log")
@@ -302,7 +305,8 @@ def step_report(cfg, runner, out_dir):
     pages = sorted((out_dir / "report" / "cases").glob("*.html"))
     if len(pages) != 1:
         raise StepError(f"expected one report page, found {len(pages)}")
-    shutil.copy2(pages[0], out_dir / f"{s}.report.html")
+    page = pages[0].read_text(encoding="utf-8").replace('href="../index.html"', 'href="report/index.html"')
+    (out_dir / f"{s}.report.html").write_text(page, encoding="utf-8")
     return {"page": f"{s}.report.html"}, f"{s}.report.html"
 
 
@@ -313,7 +317,8 @@ STEP_FUNCTIONS = {"bam": step_bam, "methylation": step_methylation, "prediction"
 # ---------------------------------------------------------------------------------------------- main
 def parse_args():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--sample", required=True, help="sample name: letters, digits, '.', '_' and '-'")
+    p.add_argument("--sample", required=True,
+                   help="sample name: letters, digits, '.', '_' and '-', starting with a letter or digit")
     p.add_argument("--bam", nargs="+", required=True, help="BAM files or folders of BAM files")
     p.add_argument("--out_dir", required=True)
     p.add_argument("--reference", required=True, help="GRCh37 FASTA with its .fai index")
@@ -340,7 +345,7 @@ def parse_args():
 def main() -> int:
     args = parse_args()
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", args.sample):
-        sys.exit("--sample may hold only letters, digits, '.', '_' and '-'")
+        sys.exit("--sample may hold only letters, digits, '.', '_' and '-', and must start with a letter or digit")
     if bool(args.panel) == bool(args.no_panel):
         sys.exit("give either --panel (a stored copy-number reference) or --no_panel")
     if args.blast_percent is not None and not 0 < args.blast_percent <= 100:
@@ -366,7 +371,12 @@ def main() -> int:
     if args.sex or args.blast_percent is not None:
         sheet = out_dir / "sample_sheet.csv"
         blast = "" if args.blast_percent is None else f"{args.blast_percent:g}"
-        sheet.write_text(f"sample,sex,blast_percent\n{args.sample},{args.sex or ''},{blast}\n")
+        content = f"sample,sex,blast_percent\n{args.sample},{args.sex or ''},{blast}\n"
+        if (out_dir / ".copy_number.done").exists() and args.redo not in STEPS[:4] and \
+                (not sheet.exists() or sheet.read_text() != content):
+            sys.exit("The copy-number step of this run was made without this sex or blast percentage; give "
+                     "--redo copy_number to use them")
+        sheet.write_text(content)
     cfg = {"sample": args.sample, "inputs": [str(p) for p in expand_inputs(args.bam)],
            "reference": str(Path(args.reference).resolve()), "manifest": str(Path(args.manifest).resolve()),
            "model_dir": str(Path(args.model_dir).resolve()), "panel": str(Path(args.panel).resolve()) if args.panel
@@ -381,12 +391,17 @@ def main() -> int:
             sys.exit(f"The methylation step of this run was made with --strands {made_with}; give --redo methylation "
                      f"to make it again with --strands {args.strands}")
 
+    info = json.loads(info_path.read_text()) if info_path.exists() else {"steps": {}}
     if args.redo:
         for step in STEPS[STEPS.index(args.redo):]:
             shutil.rmtree(out_dir / step, ignore_errors=True)
             (out_dir / f".{step}.done").unlink(missing_ok=True)
+            info["steps"].pop(step, None)
         (out_dir / f"{args.sample}.report.html").unlink(missing_ok=True)
-    info = json.loads(info_path.read_text()) if info_path.exists() else {"steps": {}}
+    if (out_dir / ".bam.done").exists() and info.get("inputs") and info["inputs"] != cfg["inputs"]:
+        print("Note: the bam step of this run was made from other input files, which run_info.json keeps; give "
+              "--redo bam to use the files given now")
+        cfg["inputs"] = info["inputs"]
     info.update({"sample": args.sample, "inputs": cfg["inputs"], "settings": {k: cfg[k] for k in (
         "reference", "manifest", "model_dir", "panel", "threads", "aligner", "device", "strands")}, "tools": tools,
         "versions": versions, "sparsh_version": (REPO / "VERSION").read_text().strip()})

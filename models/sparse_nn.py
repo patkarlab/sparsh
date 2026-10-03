@@ -17,9 +17,10 @@ scaled   : center observed values at 0.5 (x - 0.5), set missing CpGs to 0 and
            so the expected first-layer input is the same at every coverage. The
            released model uses this encoding.
 
-Known limitation (both encodings): an observed value of exactly 0.5, such as one
-of two reads methylated, is encoded like a missing CpG. Under the read model this
-concerns about 1-3% of observed CpGs at 10-30% coverage.
+Known limitation (both encodings): an observed value of exactly 0.5 is encoded
+like a missing CpG. With one call of 0 or 1 per CpG, as the released model is
+trained and run, such a value arises only when replicate probes of one CpG
+disagree and scripts/predict.py combines them by their mean.
 """
 
 from typing import Any, Dict, List, Sequence
@@ -109,7 +110,7 @@ class SparseNN(nn.Module):
 def load_model(weights_path, model_config: Dict[str, Any], device: str = "cpu") -> SparseNN:
     """Build a SparseNN from its config and load weights; returned in eval mode."""
     model = SparseNN.from_config(model_config)
-    state = torch.load(weights_path, map_location=device)
+    state = torch.load(weights_path, map_location=device, weights_only=True)   # a plain state dict
     model.load_state_dict(state)
     return model.to(device).eval()
 

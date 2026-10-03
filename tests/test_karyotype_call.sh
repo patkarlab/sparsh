@@ -20,7 +20,7 @@ step() {
 }
 
 step make_counts "$PYTHON" tests/make_synthetic_counts.py --out_dir "$TMP/counts" --seed "${SEED:-11}"
-printf 'sample,sex,blast_percent\nCASE_LOY_M,M,90\nCASE_T21_M,M,\nCASE_FOCAL_F,F,85\nCASE_TRIPLOID_F,F,95\n' \
+printf 'sample,sex,blast_percent\nCASE_LOY_M,M,90\nCASE_T21_M,M,\nCASE_FOCAL_F,F,85\nCASE_TRIPLOID_F,F,95\nCASE_HEH61_F,F,88\n' \
     > "$TMP/sheet.csv"
 step call "$PYTHON" scripts/karyotype.py call --counts_dir "$TMP/counts" --out_dir "$TMP/calls" \
               --sample_sheet "$TMP/sheet.csv"
@@ -69,12 +69,12 @@ for name, (iscn, karyotype) in expect.items():
 
 hyper = load("CASE_HYPER_F")
 assert hyper["ploidy_class"] == "high hyperdiploid" and "high_hyperdiploid" in codes(hyper)
-assert abs(hyper["leukaemic_fraction"] - 0.85) <= 0.1, hyper["leukaemic_fraction"]
+assert abs(hyper["leukemic_fraction"] - 0.85) <= 0.1, hyper["leukemic_fraction"]
 
 aml = load("CASE_AML_F")
 assert aml["iscn"].startswith("sseq[GRCh37] (7)x1,(8)x3,5q"), aml["iscn"]
 assert {"loss_5q", "loss_7", "complex", "monosomal"} <= codes(aml), codes(aml)
-assert abs(aml["leukaemic_fraction"] - 0.7) <= 0.1
+assert abs(aml["leukemic_fraction"] - 0.7) <= 0.1
 
 masked = load("CASE_MASKED_F")
 assert masked["ploidy_class"] in ("near-haploid", "high hyperdiploid"), masked["ploidy_class"]
@@ -102,6 +102,16 @@ assert any(w.startswith("A triploid baseline") and "no autosome as a whole lies 
            for w in focal["warnings"]), focal["warnings"]
 assert "12p13.2p12.1(11000001_26500000)x1" in focal["iscn"], focal["iscn"]
 
+heh = load("CASE_HEH61_F")
+# sixteen gains cover more than half of the autosomes, so the median bin sits at three copies and read depth alone
+# would read the genome as a low hypodiploid clone of 38 chromosomes at a lower fraction; the blast percentage of
+# 88 decides for the hyperdiploid reading, and the hypodiploid one is flagged as the other side of diploidy
+assert heh["karyotype"] == "61,XX,+X,+2,+4,+5,+6,+8,+10,+11,+14,+16,+17,+18,+21,+21,+22", heh["karyotype"]
+assert heh["ploidy_class"] == "high hyperdiploid" and abs(heh["leukemic_fraction"] - 0.88) <= 0.06, heh["fit"]
+assert "high_hyperdiploid" in codes(heh) and "ploidy_ambiguous" in codes(heh), codes(heh)
+assert any(a.get("crossing") and a["ploidy_class"] == "low hypodiploid" for a in heh["fit"]["alternatives"]), \
+    heh["fit"]["alternatives"]
+
 triploid = load("CASE_TRIPLOID_F")
 # a near-triploid clone is still read as one; chromosomes 5 and 12, changed in part, count three copies, and the
 # flags read the chromosomes at two copies as losses against the triploid level
@@ -116,7 +126,7 @@ assert "events_against_ploidy" not in load("CASE_AML_F")
 
 loy = load("CASE_LOY_M")
 assert loy["sex_source"] == "sample sheet" and "(Y)x0" in loy["iscn"] and "loss_of_y" in codes(loy)
-assert 0.7 <= loy["leukaemic_fraction"] <= 1.0
+assert 0.7 <= loy["leukemic_fraction"] <= 1.0
 
 seq = load("CASE_T21_M")["sequencing"]
 assert seq["reads"] > 0 and seq["read_length_median"] == 2500 and 0 < seq["mean_depth"] < 1, seq
@@ -128,7 +138,7 @@ for name in expect:
     for suffix in (".segments.tsv", ".bins.tsv.gz", ".karyotype.svg", ".karyotype.png"):
         assert (calls / f"{name}{suffix}").exists(), (name, suffix)
 summary = pd.read_csv(calls / "karyotype_summary.csv")
-assert len(summary) == 48 and summary["qc_status"].ne("failed").all()
+assert len(summary) == 49 and summary["qc_status"].ne("failed").all()
 assert (calls / "reference_1000000.tsv.gz").exists()
 fixed = json.load(open(tmp / "calls_2mb" / "CASE_AML_F.karyotype.json"))
 assert fixed["qc"]["bin_size"] == 2000000 and "(7)x1" in fixed["iscn"]
@@ -166,7 +176,7 @@ heh = line({**{f"chr{k}": 3 for k in (2, 4, 5, 6, 8, 10, 11, 14, 16, 17, 18, 22)
 assert heh["karyotype"] == "61,XX,+X,+2,+4,+5,+6,+8,+10,+11,+14,+16,+17,+18,+21,+21,+22", heh
 assert heh["ploidy_class"] == "high hyperdiploid"
 hap = line({**{f"chr{k}": 1 for k in range(1, 23) if k not in (10, 14, 18, 21)}, "chrX": 1})
-assert hap["karyotype"] == "27<1n>,X,+10,+14,+18,+21" and hap["ploidy_class"] == "near-haploid", hap
+assert hap["karyotype"] == "27<n>,X,+10,+14,+18,+21" and hap["ploidy_class"] == "near-haploid", hap
 tri = line({**{f"chr{k}": 3 for k in range(1, 23)}, "chrX": 3, "chr7": 2})
 assert tri["karyotype"] == "68<3n>,XXX,-7" and tri["ploidy_class"] == "near-triploid", tri
 

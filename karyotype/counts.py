@@ -86,8 +86,8 @@ class BinCounter:
             self.stats["header_lines"] += 1
             self.add_header_line(line)
             return
-        fields = line.rstrip("\n").split("\t", 6)
-        if len(fields) >= 6 and not fields[0].isdigit():      # full SAM record: drop QNAME
+        fields = line.rstrip("\n").split("\t", 11)
+        if len(fields) >= 11:                                 # a full SAM record (11 or more columns): drop QNAME
             fields = fields[1:6]
         if len(fields) < 5:
             self.stats["malformed"] += 1

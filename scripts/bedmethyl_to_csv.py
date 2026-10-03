@@ -16,7 +16,8 @@ for reads aligned to GRCh37 (hg19): one row for each strand of every CpG with re
 The probes come from Illumina's manifest of the MethylationEPIC v2.0 array (EPIC-8v2-0_A2.csv; its column names are
 on line 8): the probe identifier from the first column whose name contains "ilmn" (IlmnID), the chromosome from the
 column CHR, and the position from the first column whose name contains both "mapinfo" and "37", the GRCh37 position
-MAPINFO_37 (without such a column, the first whose name contains "mapinfo"). CHR is the GRCh38 chromosome; for 55
+MAPINFO_37 (a manifest without such a column is refused, since the column MAPINFO of the v2.0 manifest holds the
+GRCh38 position and would place almost every probe on the wrong base). CHR is the GRCh38 chromosome; for 55
 probes of EPIC-8v2-0_A2.csv it is not the GRCh37 one (CHR_37), and those probes get no call or the call of an
 unrelated CpG (docs/PIPELINE.md). Chromosome names are compared without "chr", other punctuation and case, and
 only chromosomes 1 to 22, X and Y are used. A probe is placed on one base of its CpG, in most cases the C of the
@@ -59,7 +60,7 @@ def clean_chrom(values: pd.Series) -> pd.Series:
     """Chromosome names as compared: 'chr' removed, then every character other than a letter, digit or underscore,
     in upper case."""
     return (values.astype(str).str.strip()
-            .str.replace("chr", "", regex=False)
+            .str.replace(r"^chr", "", case=False, regex=True)
             .str.replace(r"[^\w]", "", regex=True)
             .str.upper())
 
@@ -106,10 +107,11 @@ def manifest_columns(path: Path):
     chrom = [c for c in columns if c.lower() == "chr"]
     if not chrom:
         raise SystemExit(f"{path}: no column 'CHR' on line 8")
-    position = [c for c in columns if "mapinfo" in c.lower() and "37" in c.lower()] or \
-               [c for c in columns if "mapinfo" in c.lower()]
+    position = [c for c in columns if "mapinfo" in c.lower() and "37" in c.lower()]
     if not position:
-        raise SystemExit(f"{path}: no column whose name contains 'MAPINFO' on line 8")
+        raise SystemExit(f"{path}: no GRCh37 position column (a name containing 'MAPINFO' and '37', such as "
+                         "MAPINFO_37) on line 8. The column MAPINFO of the v2.0 manifest is the GRCh38 position, "
+                         "and the reads are aligned to GRCh37, so it cannot be used instead")
     return probe[0], chrom[0], position[0]
 
 
@@ -132,10 +134,14 @@ def read_probes(path: Path) -> pd.DataFrame:
     return probes[["chrom", "start", "end", "probe_id"]].reset_index(drop=True)
 
 
-def first_line(path: Path) -> str:
+def is_gzip(path: Path) -> bool:
+    """Compression is read from the first two bytes, not from the file name."""
     with open(path, "rb") as fh:
-        compressed = fh.read(2) == b"\x1f\x8b"
-    with (gzip.open(path, "rt") if compressed else open(path)) as fh:
+        return fh.read(2) == b"\x1f\x8b"
+
+
+def first_line(path: Path) -> str:
+    with (gzip.open(path, "rt") if is_gzip(path) else open(path)) as fh:
         return next((line for line in fh if line.strip()), "")
 
 
@@ -162,7 +168,7 @@ def read_pileup(path: Path, probes: pd.DataFrame):
                ("other", "+", keys.assign(base=keys["base"] - 1))]
     kept, total = [], 0
     reader = pd.read_csv(path, sep="\t", header=None, names=BEDMETHYL_COLUMNS, usecols=[0, 1, 2, 5, 9, 10, 11],
-                         dtype=str, chunksize=CHUNK_ROWS, compression="infer")
+                         dtype=str, chunksize=CHUNK_ROWS, compression="gzip" if is_gzip(path) else None)
     for chunk in reader:
         rows = pd.DataFrame({
             "chrom": clean_chrom(chunk["chrom"]),

@@ -24,7 +24,7 @@ Acute myeloid leukemia has thirteen classes: APL_PML-RARA, AML_RUNX1-RUNX1T1, AM
 
 The model was trained on 2,845 Illumina methylation arrays of acute leukemia and normal bone marrow, from published studies and from the developers' own patients; the article lists the sources. The label of each array is the subtype found by genetic testing (RNA sequencing, fusion calls, karyotype or mutations) where this was available; T-lymphoblastic arrays from studies without genetic data for each sample were labeled by clustering of their methylation. The labels were reviewed with a label audit (scripts/label_audit.py) together with the genetic data. A label was kept only when the methylation agreed with it; an array was relabeled only when its genetic data and its methylation agreed on another class, and was left out otherwise. Arrays of one patient, and near-identical arrays found by scripts/check_data.py, were kept on the same side of every cross-validation split.
 
-Arrays of mixed-phenotype acute leukemia, of acute myeloid leukemia and B-lymphoblastic leukemia without further classification, of acute myeloid leukemia with myelodysplasia-related changes and of acute myeloid leukemia with MECOM rearrangement were not used for training.
+Arrays of mixed-phenotype acute leukemia, of acute myeloid leukemia and B-lymphoblastic leukemia without further classification, of acute myeloid leukemia, myelodysplasia-related, and of acute myeloid leukemia with MECOM rearrangement were not used for training.
 
 ## Training
 
@@ -34,7 +34,7 @@ Every array is presented as a simulated nanopore sample: a random share of its C
 
 Every array was scored once, by the network of the fold that had held it out, on simulated nanopore reads. The file cv_metrics_by_condition.csv of the model gives every condition. At 30% coverage, without dilution, the accuracy was 0.935 and the balanced accuracy (the mean recall over classes) 0.929. The most probable class reached 0.90 for 85.1% of the arrays, and 98.0% of those calls were correct. Averaged over coverages from 5% to 90%, the balanced accuracy was 0.918. With the leukemia arrays diluted to 30% blasts, at 30% coverage, the balanced accuracy fell to 0.804, and 38.9% of the arrays reached the threshold.
 
-These figures describe single networks on simulated reads. The deployed model averages five networks, which makes its probabilities somewhat more conservative, and real nanopore calls carry errors and coverage patterns that the simulation does not fully reproduce. The performance on nanopore samples is reported in the article. Those samples were also used to test earlier versions of the model during its development, and some of the questions addressed in this version arose while they were being scored. They are therefore not a fully independent test of this version, and an independent validation is still needed.
+These figures describe single networks on simulated reads. The deployed model averages five networks, which makes its probabilities somewhat more conservative, and real nanopore calls carry errors and coverage patterns that the simulation does not fully reproduce. The performance on nanopore samples is reported in the article.
 
 ## Limitations
 

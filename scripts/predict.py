@@ -92,8 +92,8 @@ def parse_args():
     p.add_argument("--min_coverage", type=float, default=0.01,
                    help="Samples with fewer observed CpGs (fraction) are marked not callable")
     p.add_argument("--duplicate_probes", choices=DUPLICATE_RULES, default="mean",
-                   help="Probe IDs repeated in a file: mean of the copies with a value (default), "
-                        "first column only, or refuse the file (see data/ont.py)")
+                   help="Probe IDs repeated in a file: mean of the copies with a value (default), the majority "
+                        "call (missing when split evenly), first column only, or refuse the file (see data/ont.py)")
     p.add_argument("--hierarchy", default=None,
                    help="Class hierarchy for the reported call (default configs/class_hierarchy.json; 'none' = "
                         "lineage by class-name prefix only, no families)")
@@ -258,7 +258,7 @@ def main():
     ins = ev[ev["in_scheme"]]
     y_true = ins["true_label"].map({c: i for i, c in enumerate(classes)}).to_numpy()
     y_pred = ins["prediction"].map({c: i for i, c in enumerate(classes)}).to_numpy()
-    summary = {
+    summary = json_safe({
         "model_dir": str(model_dir), "models_used": use, "threshold": threshold,
         "duplicate_probes": args.duplicate_probes,
         "display_names": {"file": str(display_path) if display_path else None, "shown": display},
@@ -282,14 +282,16 @@ def main():
         },
         "reported_call": {
             "hierarchy": str(hierarchy_path) if hierarchy_path else None,
-            "all_with_truth": json_safe(summarize_calls(ev, scored)),
-            "in_scheme": json_safe(summarize_calls(ev[ev["in_scheme"]], scored[ev["in_scheme"].to_numpy()])),
+            "all_with_truth": summarize_calls(ev, scored),
+            "in_scheme": summarize_calls(ev[ev["in_scheme"]], scored[ev["in_scheme"].to_numpy()]),
         },
-    }
+    })
     by_cov = ev.groupby("coverage_bin").agg(
         n=("sample", "size"), accuracy=("correct", "mean"), top2_accuracy=("top2_correct", "mean"),
         callable_share=("callable", "mean"))
     by_cov["accuracy_callable"] = ev[ev["callable"]].groupby("coverage_bin")["correct"].mean()
+    bands = [coverage_bin(lo) for lo in COVERAGE_BINS[:-1]]              # lowest coverage first, not alphabetical
+    by_cov = by_cov.reindex([b for b in bands if b in by_cov.index] + sorted(set(by_cov.index) - set(bands)))
     by_cov.to_csv(out / "evaluation_by_coverage.csv", float_format="%.3f")
     by_class = ins.groupby("true_label").agg(n=("sample", "size"), recall=("correct", "mean"),
                                              callable_share=("callable", "mean"))

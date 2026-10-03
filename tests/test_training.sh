@@ -6,6 +6,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 TMP=$(mktemp -d)
+PYTHON=${PYTHON:-python}
 trap 'rm -rf "$TMP"' EXIT
 
 step() {
@@ -17,51 +18,51 @@ step() {
     fi
 }
 
-step make_data    python tests/make_synthetic.py --output_dir "$TMP/data"
-step check_data   python scripts/check_data.py --data_path "$TMP/data/train.pkl" --output_dir "$TMP/checks" \
+step make_data    "$PYTHON" tests/make_synthetic.py --output_dir "$TMP/data"
+step check_data   "$PYTHON" scripts/check_data.py --data_path "$TMP/data/train.pkl" --output_dir "$TMP/checks" \
                       --exclude_prefixes MPAL
 printf '# samples to leave out\nGSM100001\n\nGSM100002,replicate\n' > "$TMP/exclude.txt"
-step exclusion    python scripts/check_data.py --data_path "$TMP/data/train.pkl" --output_dir "$TMP/checks_excl" \
+step exclusion    "$PYTHON" scripts/check_data.py --data_path "$TMP/data/train.pkl" --output_dir "$TMP/checks_excl" \
                       --exclude_prefixes MPAL --exclude_ids "$TMP/exclude.txt"
 grep -q "Excluding 2 listed samples" "$TMP/exclusion.log" || { echo "FAIL  exclusion list not applied"; exit 1; }
-step train_new    python scripts/train.py --data_path "$TMP/data/train.pkl" --output_dir "$TMP/run_new" \
+step train_new    "$PYTHON" scripts/train.py --data_path "$TMP/data/train.pkl" --output_dir "$TMP/run_new" \
                       --exclude_prefixes MPAL --groups_file "$TMP/checks/groups.csv" \
                       --n_folds 2 --epochs 3 --hidden_dims 32 16 --device cpu --final_model
-step train_legacy python scripts/train.py --data_path "$TMP/data/train.pkl" --output_dir "$TMP/run_legacy" \
+step train_legacy "$PYTHON" scripts/train.py --data_path "$TMP/data/train.pkl" --output_dir "$TMP/run_legacy" \
                       --exclude_prefixes MPAL --n_folds 2 --epochs 3 --hidden_dims 32 16 --device cpu \
                       --imbalance legacy_upsample --train_sim mask --val_sim mask --coverage_mode schedule
-step train_wide   python scripts/train.py --data_path "$TMP/data/train.pkl" --output_dir "$TMP/run_wide" \
+step train_wide   "$PYTHON" scripts/train.py --data_path "$TMP/data/train.pkl" --output_dir "$TMP/run_wide" \
                       --exclude_prefixes MPAL --n_folds 2 --epochs 3 --hidden_dims 32 16 --device cpu \
                       --train_sim binary --val_sim binary --eval_sims binary oneread --cov_max 0.95 \
                       --coverage_dist uniform --input_encoding scaled --val_coverages 0.1 0.5 0.9 \
                       --eval_coverages 0.1 0.5 0.9
-step train_wide2  python scripts/train.py --data_path "$TMP/data/train.pkl" --output_dir "$TMP/run_wide2" \
+step train_wide2  "$PYTHON" scripts/train.py --data_path "$TMP/data/train.pkl" --output_dir "$TMP/run_wide2" \
                       --exclude_prefixes MPAL --n_folds 2 --epochs 3 --hidden_dims 32 16 --device cpu \
                       --train_sim binary --val_sim binary --eval_sims binary oneread --cov_max 0.95 \
                       --coverage_dist uniform --input_encoding scaled --val_coverages 0.1 0.5 0.9 \
                       --eval_coverages 0.1 0.5 0.9 --seed 43
 # the recipe of the released model, read from its file, with the settings of this small test after it
-step train_recipe python scripts/train.py @configs/recipe_v0.4.0.args --data_path "$TMP/data/train.pkl" \
-                      --output_dir "$TMP/run_recipe" --exclude_classes --normal_class T-ALL --n_folds 2 --epochs 2 \
+step train_recipe "$PYTHON" scripts/train.py @configs/recipe_v0.4.0.args --data_path "$TMP/data/train.pkl" \
+                      --output_dir "$TMP/run_recipe" --exclude_classes --normal_class T-ALL_TAL1-like --n_folds 2 --epochs 2 \
                       --hidden_dims 16 --device cpu --val_coverages 0.1 0.5 --eval_coverages 0.1 0.5 \
                       --eval_blasts 1 0.5
-step predict      python scripts/predict.py --model_dir "$TMP/run_new" --ont_dir "$TMP/data/ont" \
+step predict      "$PYTHON" scripts/predict.py --model_dir "$TMP/run_new" --ont_dir "$TMP/data/ont" \
                       --ground_truth "$TMP/data/ground_truth.csv" --output_dir "$TMP/pred" --device cpu
 # names shown for classes (evaluation/display.py); everything is computed with the internal names
 printf '%s\n' '{"display": {"AML_KMT2A-r": "AML_KMT2A_shown", "NOT_A_CLASS": "ignored",' \
-    '             "B-ALL_PAX5_BCR-ABL1_B-ALL_BCR-ABL1_like": "B-ALL_PH_shown"}}' > "$TMP/names.json"
+    '             "B-ALL_PAX5_BCR-ABL1_BCR-ABL1-Like": "B-ALL_PH_shown"}}' > "$TMP/names.json"
 sed 's/,AML_KMT2A-r$/,AML_KMT2A_shown/' "$TMP/data/ground_truth.csv" > "$TMP/ground_truth_shown.csv"
-step predict_names python scripts/predict.py --model_dir "$TMP/run_new" --ont_dir "$TMP/data/ont" \
+step predict_names "$PYTHON" scripts/predict.py --model_dir "$TMP/run_new" --ont_dir "$TMP/data/ont" \
                       --ground_truth "$TMP/ground_truth_shown.csv" --output_dir "$TMP/pred_names" --device cpu \
                       --display_names "$TMP/names.json"
-printf '%s\n' '{"display": {"AML_KMT2A-r": "T-ALL"}}' > "$TMP/names_clash.json"
-step names_refused bash -c "python scripts/predict.py --model_dir '$TMP/run_new' --ont_dir '$TMP/data/ont' \
+printf '%s\n' '{"display": {"AML_KMT2A-r": "T-ALL_TAL1-like"}}' > "$TMP/names_clash.json"
+step names_refused bash -c "'$PYTHON' scripts/predict.py --model_dir '$TMP/run_new' --ont_dir '$TMP/data/ont' \
                       --output_dir '$TMP/pred_clash' --device cpu --display_names '$TMP/names_clash.json' 2>&1 \
                       | grep -q 'is the internal name of another'"
-step ont_coverage python scripts/ont_coverage.py --run "$TMP/run_new" "$TMP/data/ont" --output "$TMP/ont_coverage.csv"
-step compare      python scripts/compare_runs.py "$TMP/run_legacy" "$TMP/run_new" "$TMP/run_wide" \
+step ont_coverage "$PYTHON" scripts/ont_coverage.py --run "$TMP/run_new" "$TMP/data/ont" --output "$TMP/ont_coverage.csv"
+step compare      "$PYTHON" scripts/compare_runs.py "$TMP/run_legacy" "$TMP/run_new" "$TMP/run_wide" \
                       --ont_coverage "$TMP/ont_coverage.csv" --output "$TMP/comparison.csv"
-step simulation   python - <<'PY'
+step simulation   "$PYTHON" - <<'PY'
 import numpy as np
 import torch
 from models.corruption import corrupt_numpy, corrupt_torch
@@ -83,7 +84,7 @@ agree = {sim: np.nanmean(np.where(far, corrupt_numpy(beta, 0.9, sim, np.random.d
 assert agree["binary"] > agree["oneread"], agree
 print("simulation ok", agree)
 PY
-step duplicates   python - "$TMP" <<'PY'
+step duplicates   "$PYTHON" - "$TMP" <<'PY'
 import sys
 import numpy as np
 from data.ont import read_ont_csv
@@ -108,7 +109,7 @@ for f in run_new/cv_metrics_by_condition.csv run_new/fold_models/fold1.pt run_ne
          run_new/config.json pred/predictions.csv pred/summary_metrics.json checks/groups.csv; do
     [ -s "$TMP/$f" ] || { echo "FAIL  expected output missing: $f"; exit 1; }
 done
-step contents python - "$TMP" <<'PY'
+step contents "$PYTHON" - "$TMP" <<'PY'
 import json, sys
 import pandas as pd
 tmp = sys.argv[1]
@@ -122,7 +123,7 @@ assert {"dense", "reads_0.20", "mask_0.20"} <= set(m["condition"])
 c = pd.read_csv(f"{tmp}/comparison.csv", index_col=0)
 assert "callable_share_at_accuracy_0.98" in set(c["metric"]), "calibration-free table missing"
 assert not any(str(i).startswith(("dense", "mask_")) for i in c.index), "only nanopore rows by default"
-for row in ("mean over reads_*", "your ONT samples, binary_*", "mean over oneread_*", "binary_0.90"):
+for row in ("mean over reads_*", "ONT samples, binary_*", "mean over oneread_*", "binary_0.90"):
     assert row in c.index, f"row {row} missing from the comparison"
 w = pd.read_csv(f"{tmp}/run_wide/cv_metrics_by_condition.csv")
 assert set(w["condition"]) == {"dense", "binary_0.10", "binary_0.50", "binary_0.90",
@@ -133,7 +134,8 @@ assert o["coverage_pct"].between(10, 40).all() and (o["share_0_or_1"] > 0.8).all
 # shown names change only the names in the outputs
 import os
 names = json.load(open(f"{tmp}/names.json"))["display"]
-back = {v: k for k, v in names.items()}
+default = json.load(open("configs/display_names.json"))["display"]      # the names shown without --display_names
+back = {v: default.get(k, k) for k, v in names.items()}
 a = pd.read_csv(f"{tmp}/pred/predictions.csv")
 b = pd.read_csv(f"{tmp}/pred_names/predictions.csv")
 assert "prob_AML_KMT2A_shown" in b.columns and "prob_AML_KMT2A-r" not in b.columns, list(b.columns)

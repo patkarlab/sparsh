@@ -3,10 +3,81 @@ message: "If you use SPARSH, please cite the article that describes it. Until it
 title: "SPARSH: Subtype Prediction via Adaptive Recognition from Sparse Hematological data"
 abstract: "SPARSH uses a neural network trained on Illumina methylation arrays to classify acute leukemia from the sparse CpG methylation calls of a low-pass nanopore genome run. From the same reads it estimates copy number along the genome and writes it as a karyotype, and it puts both into a report for each case."
 type: software
+# The first three authors contributed equally. Affiliations are given in full for each author.
 authors:
-  - name: "ACTREC, Tata Memorial Centre"
-    city: "Navi Mumbai"
-    country: IN
+  - family-names: Sheth
+    given-names: Ayush
+    affiliation: "Department of Haematopathology and Cytogenetics, ACTREC, Tata Memorial Centre, Navi Mumbai, India"
+  - family-names: Dhumal
+    given-names: Yogesh
+    affiliation: "Department of Haematopathology and Cytogenetics, ACTREC, Tata Memorial Centre, Navi Mumbai, India"
+  - family-names: Tiwari
+    given-names: Deepa
+    affiliation: "Homi Bhabha National Institute, Mumbai, India"
+  - family-names: Pratik
+    given-names: Harsh
+    affiliation: "Department of Haematopathology and Cytogenetics, ACTREC, Tata Memorial Centre, Navi Mumbai, India"
+  - family-names: Nair
+    given-names: Krishna
+    affiliation: "Department of Haematopathology and Cytogenetics, ACTREC, Tata Memorial Centre, Navi Mumbai, India; Homi Bhabha National Institute, Mumbai, India"
+  - family-names: Bagmare
+    given-names: Shifali
+    affiliation: "Department of Haematopathology and Cytogenetics, ACTREC, Tata Memorial Centre, Navi Mumbai, India"
+  - family-names: Gawde
+    given-names: Vaibhav
+    affiliation: "Department of Haematopathology and Cytogenetics, ACTREC, Tata Memorial Centre, Navi Mumbai, India"
+  - family-names: Zanvar
+    given-names: Swapnil
+    affiliation: "Department of Haematopathology and Cytogenetics, ACTREC, Tata Memorial Centre, Navi Mumbai, India; Homi Bhabha National Institute, Mumbai, India"
+  - family-names: Bhanshe
+    given-names: Prasanna
+    affiliation: "Department of Haematopathology and Cytogenetics, ACTREC, Tata Memorial Centre, Navi Mumbai, India"
+  - family-names: Chaudhary
+    given-names: Shruti
+    affiliation: "Department of Haematopathology and Cytogenetics, ACTREC, Tata Memorial Centre, Navi Mumbai, India"
+  - family-names: Terse
+    given-names: Vishram
+    affiliation: "Department of Haematopathology and Cytogenetics, ACTREC, Tata Memorial Centre, Navi Mumbai, India"
+  - family-names: Shetty
+    given-names: Dhanlaxmi
+    affiliation: "Department of Haematopathology and Cytogenetics, ACTREC, Tata Memorial Centre, Navi Mumbai, India"
+  - family-names: Joshi
+    given-names: Swapnali
+    affiliation: "Department of Haematopathology and Cytogenetics, ACTREC, Tata Memorial Centre, Navi Mumbai, India"
+  - family-names: Gudapati
+    given-names: Prathyusha
+    affiliation: "Department of Haematopathology and Cytogenetics, ACTREC, Tata Memorial Centre, Navi Mumbai, India"
+  - family-names: Rajpal
+    given-names: Sweta
+    affiliation: "Department of Haematopathology and Cytogenetics, ACTREC, Tata Memorial Centre, Navi Mumbai, India; Homi Bhabha National Institute, Mumbai, India"
+  - family-names: Tembhare
+    given-names: Prashant
+    affiliation: "Department of Haematopathology and Cytogenetics, ACTREC, Tata Memorial Centre, Navi Mumbai, India; Homi Bhabha National Institute, Mumbai, India"
+  - family-names: Chatterjee
+    given-names: Gaurav
+    affiliation: "Department of Haematopathology and Cytogenetics, ACTREC, Tata Memorial Centre, Navi Mumbai, India; Homi Bhabha National Institute, Mumbai, India"
+  - family-names: Gupta
+    given-names: Ritu
+    affiliation: "Department of OncoHaematopathology, All India Institute of Medical Sciences, New Delhi, India"
+  - family-names: Bhatia
+    given-names: Prateek
+    affiliation: "Postgraduate Institute of Medical Education and Research, Chandigarh, India"
+  - family-names: Ramshankar
+    given-names: Vijayalakshmi
+    affiliation: "Department of Cancer Biology and Molecular Diagnostics, Cancer Institute (W.I.A), Chennai, India"
+  - family-names: Parihar
+    given-names: Mayur
+    affiliation: "Laboratory Haematology, Cytogenetics and Molecular Pathology, Tata Medical Centre, Kolkata, India"
+  - family-names: Subramanian
+    given-names: Papagudi G
+    affiliation: "Department of Haematopathology and Cytogenetics, ACTREC, Tata Memorial Centre, Navi Mumbai, India; Homi Bhabha National Institute, Mumbai, India"
+  - family-names: Patkar
+    given-names: Nikhil
+    affiliation: "Department of Haematopathology and Cytogenetics, ACTREC, Tata Memorial Centre, Navi Mumbai, India; Homi Bhabha National Institute, Mumbai, India"
+contact:
+  - family-names: Patkar
+    given-names: Nikhil
+    affiliation: "Department of Haematopathology and Cytogenetics, ACTREC, Tata Memorial Centre, Navi Mumbai, India"
 version: 1.0.0
 license: MIT
 repository-code: "https://github.com/patkarlab/sparsh"

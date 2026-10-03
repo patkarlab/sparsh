@@ -310,12 +310,12 @@ def karyotype(case: Case, res: text.Result, ctx: Context) -> str:
             if key == "sex" and d.get("sex_source"):
                 value += f" ({d['sex_source']})"
             rows.append((label, value))
-    if isinstance(d.get("leukaemic_fraction"), (int, float)) and not isinstance(d.get("leukaemic_fraction"), bool):
-        rows.append(("Leukemic fraction (from copy number)", f"{d['leukaemic_fraction']:.2f}"))
+    if isinstance(d.get("leukemic_fraction"), (int, float)) and not isinstance(d.get("leukemic_fraction"), bool):
+        rows.append(("Leukemic fraction (from copy number)", f"{d['leukemic_fraction']:.2f}"))
         alternatives = _alternatives(d)
         if alternatives:
             rows.append(("Other ploidies that fit", alternatives))
-    elif "leukaemic_fraction" in d:
+    elif "leukemic_fraction" in d:
         rows.append(("Leukemic fraction (from copy number)", "not estimable"))
     arms = _changed_arms(d)
     if arms:

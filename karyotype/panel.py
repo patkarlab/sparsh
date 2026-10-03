@@ -7,8 +7,8 @@ the median and the spread of the cohort's GC-corrected profiles bin by bin, the 
 bin, and the thresholds on the read density of chromosome Y that tell men from women in that cohort. The panel holds
 no profile of any single sample and no sample names.
 
-File: gzip-compressed text, '# key<TAB>value' lines first (format, build, samples, the Y thresholds, version,
-creation time), then a table with the columns size, chrom, start, end, median, spread and n.
+File: gzip-compressed text, '# key<TAB>value' lines first (format, build, samples, the Y thresholds, the
+SPARSH version, creation time), then a table with the columns size, chrom, start, end, median, spread and n.
 """
 
 import gzip

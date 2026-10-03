@@ -114,7 +114,7 @@ def add_summary_rows(table: pd.DataFrame, ont_cov, with_mean: bool = True) -> pd
                 values = table.loc[names, run].to_numpy(dtype=float)
                 ok = np.isfinite(values)
                 expected[run] = float(np.mean(np.interp(ont_cov, covs[ok], values[ok]))) if ok.any() else np.nan
-            rows[f"your ONT samples, {label}_*"] = pd.Series(expected)
+            rows[f"ONT samples, {label}_*"] = pd.Series(expected)
     for label, row in rows.items():
         table.loc[label] = row
     return table

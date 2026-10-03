@@ -8,6 +8,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 TMP=$(mktemp -d)
+PYTHON=${PYTHON:-python}
 trap 'rm -rf "$TMP"' EXIT
 
 step() {
@@ -31,12 +32,12 @@ refused() {
     fi
 }
 
-step make_data python tests/make_synthetic.py --output_dir "$TMP/data"
+step make_data "$PYTHON" tests/make_synthetic.py --output_dir "$TMP/data"
 # binary reads, as the deployed recipe uses: the report's cross-validation section reads the binary_* conditions
-step train     python scripts/train.py --data_path "$TMP/data/train.pkl" --output_dir "$TMP/run" \
+step train     "$PYTHON" scripts/train.py --data_path "$TMP/data/train.pkl" --output_dir "$TMP/run" \
                    --exclude_prefixes MPAL --n_folds 2 --epochs 3 --hidden_dims 32 16 --device cpu \
                    --train_sim binary --val_sim binary --eval_sims binary --eval_coverages 0.05 0.1 0.2 0.3 0.5
-step predict   python scripts/predict.py --model_dir "$TMP/run" --ont_dir "$TMP/data/ont" \
+step predict   "$PYTHON" scripts/predict.py --model_dir "$TMP/run" --ont_dir "$TMP/data/ont" \
                    --output_dir "$TMP/pred" --device cpu
 
 # Sample sheet (no names of patients) and a copy-number result for one sample, written by hand. The sheet uses
@@ -63,7 +64,7 @@ EOF
 cat > "$TMP/karyotypes/ONT02.karyotype.json" <<'EOF'
 {"sample": "ONT02", "iscn": "sseq[GRCh37] (7)x1,9p21.3(20000001_24000000)x0", "karyotype": "45,XY,-7",
  "modal_number": 45, "ploidy_class": "near-diploid", "sex": "XY", "sex_source": "inferred from reads on chromosome Y",
- "leukaemic_fraction": 0.62, "baseline_copies": 2,
+ "leukemic_fraction": 0.62, "baseline_copies": 2,
  "events": [{"level": "whole", "type": "loss", "chrom": "7", "arm": null, "start": 0, "end": 159138663,
              "size_mb": 159.1, "bands": "7p22.3q36.3", "copy_number": 1, "normal_copies": 2, "cell_fraction": 0.62,
              "subclonal": false, "whole_chromosome": true, "genes": ["IKZF1", "CUX1", "EZH2"]},
@@ -88,39 +89,39 @@ printf '%s\n' '<svg xmlns="http://www.w3.org/2000/svg" width="240" height="40" v
     '</svg>' > "$TMP/karyotypes/ONT01.karyotype.svg"
 
 # the shipped interpretation text covers the classes of the real model; the synthetic classes get short entries
-step interpretation python - "$TMP/interpretation.json" <<'INTERP'
+step interpretation "$PYTHON" - "$TMP/interpretation.json" <<'INTERP'
 import json, sys
 text = json.load(open("configs/interpretation.json"))
-for name in ("AML_KMT2A-r", "AML_mutated_NPM1_Nup98_DEKnup214", "B-ALL_ETV6-RUNX1", "B-ALL_High hyperdiploid",
-             "B-ALL_PAX5 P80R", "B-ALL_PAX5_BCR-ABL1_B-ALL_BCR-ABL1_like", "B-ALL_TCF3-PBX1", "T-ALL"):
+for name in ("AML_KMT2A-r", "AML_HOXdys_NPM1_NUP98_DEK-NUP214_UBTF", "B-ALL_ETV6-RUNX1", "B-ALL_Aneuploidy",
+             "B-ALL_PAX5 P80R", "B-ALL_PAX5_BCR-ABL1_BCR-ABL1-Like", "B-ALL_TCF3-PBX1", "T-ALL_TAL1-like"):
     text["classes"].setdefault(name, {"name": f"Synthetic class {name}",
                                       "summary": f"The methylation profile matches the synthetic class {name}."})
 json.dump(text, open(sys.argv[1], "w"), indent=1)
 INTERP
-step report    python scripts/report.py --predictions_dir "$TMP/pred" --output_dir "$TMP/report" \
+step report    "$PYTHON" scripts/report.py --predictions_dir "$TMP/pred" --output_dir "$TMP/report" \
                    --sample_sheet "$TMP/sheet.csv" --karyotype_dir "$TMP/karyotypes" --title "Synthetic test report" \
                    --interpretation "$TMP/interpretation.json"
 refused refuse_nonempty "is not empty" \
-    python scripts/report.py --predictions_dir "$TMP/pred" --output_dir "$TMP/report"
-step overwrite python scripts/report.py --predictions_dir "$TMP/pred" --output_dir "$TMP/report" --overwrite \
+    "$PYTHON" scripts/report.py --predictions_dir "$TMP/pred" --output_dir "$TMP/report"
+step overwrite "$PYTHON" scripts/report.py --predictions_dir "$TMP/pred" --output_dir "$TMP/report" --overwrite \
                    --sample_sheet "$TMP/sheet.csv" --karyotype_dir "$TMP/karyotypes" --title "Synthetic test report" \
                    --interpretation "$TMP/interpretation.json"
 refused refuse_no_predictions "No predictions.csv" \
-    python scripts/report.py --predictions_dir "$TMP/data" --output_dir "$TMP/report_none"
+    "$PYTHON" scripts/report.py --predictions_dir "$TMP/data" --output_dir "$TMP/report_none"
 printf 'sample,centre\nONT01,Centre A\nNOT_A_SAMPLE,Centre B\n' > "$TMP/sheet_bad.csv"
 refused refuse_unknown_sample "NOT_A_SAMPLE" \
-    python scripts/report.py --predictions_dir "$TMP/pred" --output_dir "$TMP/report_bad" --sample_sheet "$TMP/sheet_bad.csv"
+    "$PYTHON" scripts/report.py --predictions_dir "$TMP/pred" --output_dir "$TMP/report_bad" --sample_sheet "$TMP/sheet_bad.csv"
 refused refuse_unknown_selection "not in" \
-    python scripts/report.py --predictions_dir "$TMP/pred" --output_dir "$TMP/report_sel" --samples ONT01 NOPE
+    "$PYTHON" scripts/report.py --predictions_dir "$TMP/pred" --output_dir "$TMP/report_sel" --samples ONT01 NOPE
 
 # the same predictions without the model folder (no cross-validation section), for two samples only, at another
 # threshold, after the model folder has been moved away
 mv "$TMP/run" "$TMP/run_moved"
-step report_without_model python scripts/report.py --predictions_dir "$TMP/pred" --output_dir "$TMP/report_nomodel" \
+step report_without_model "$PYTHON" scripts/report.py --predictions_dir "$TMP/pred" --output_dir "$TMP/report_nomodel" \
                    --samples ont02 ONT03 --threshold 0.15
 mv "$TMP/run_moved" "$TMP/run"
 
-step contents python - "$TMP" <<'PY'
+step contents "$PYTHON" - "$TMP" <<'PY'
 import json, re, sys
 from html.parser import HTMLParser
 from pathlib import Path

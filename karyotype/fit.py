@@ -38,8 +38,18 @@ the sex chromosomes, more prone to artifacts, are then assigned with it. Read de
 always separate solutions: a near-haploid clone and the same clone doubled
 give the same profile, and a small leukemic fraction with large changes can
 mimic a large one with small changes. The best cost for every baseline is
-therefore kept and reported, and a blast percentage from the sample sheet
-limits the fraction when it is known.
+therefore kept and reported. The preference for a near-diploid baseline
+stands in for the unknown fraction. A blast percentage from the sample
+sheet, when known, limits the fraction to 20 points on either side of it,
+adds a cost that grows with the distance from it (the blast percentage is
+taken as an estimate of the leukemic fraction with a standard deviation of
+7 points, so a fraction 20 points away costs about 8), and reduces the
+preference for a near-diploid baseline to a quarter. Between two readings
+that read depth cannot tell apart, such as a high hyperdiploid genome with
+most of its autosomes gained and the low hypodiploid clone that gives the
+same profile at a lower fraction, the reading whose fraction lies nearer
+the blast percentage is then taken; without this a high hyperdiploid genome
+of 61 chromosomes at 88% blasts was read as a hypodiploid clone of 38.
 
 A baseline other than two copies is taken only when at least one autosome, over 90% of its fitted length, lies
 at another copy number in that reading. Read depth places a genome on another baseline only through whole
@@ -59,7 +69,8 @@ import pandas as pd
 
 from .normalise import normal_copies
 
-PENALTY = {1: 12.0, 2: 0.0, 3: 12.0, 4: 24.0}   # preference for a near-diploid baseline
+PENALTY = {1: 12.0, 2: 0.0, 3: 12.0, 4: 24.0}   # preference for a near-diploid baseline, without a blast percentage
+PENALTY_WITH_BLAST = {m: v / 4.0 for m, v in PENALTY.items()}   # the blast percentage then constrains the fraction
 EXTRA_COPY = 10.0                                # per segment two or more copies away from the baseline
 SUBCLONAL = 6.0                                  # per segment explained as a change in part of the cells
 MODEL_ERROR = 0.05                               # log2 allowance per segment beyond counting noise
@@ -72,6 +83,7 @@ MIN_CHANGE_Z = 4.0                               # standard errors from the norm
 ALTERNATIVE = 40.0                               # other baselines within this of the best cost are considered:
 CLOSE = 6.0                                      # noted when within this, or when hypo- against hyperdiploid
 WHOLE_SHARE = 0.9                                # share of an autosome's fitted bins that makes it whole
+BLAST_SD = 0.07                                  # the blast percentage as an estimate of the fraction: its spread
 
 
 def expected_log2(c, n, p, m):
@@ -145,7 +157,8 @@ def fit_segments(seg: pd.DataFrame, sex: str, sigma: float, max_cn: int = 8,
     """
     seg: segments with chrom, n_bins, mean and (optionally) sigma, the per-bin noise of their chromosome;
     sigma: per-bin noise used where the segments do not carry their own.
-    purity_range: (low, high) limits on the leukemic fraction, for example from the blast percentage.
+    purity_range: (low, high) limits on the leukemic fraction, or (low, high, blast) with the blast fraction
+    itself, whose distance from the fraction is then costed (see the notes at the top).
     """
     means = seg["mean"].to_numpy(dtype=float)
     nbins = seg["n_bins"].to_numpy(dtype=float)
@@ -155,12 +168,18 @@ def fit_segments(seg: pd.DataFrame, sex: str, sigma: float, max_cn: int = 8,
     seg_sigma = seg["sigma"].to_numpy(dtype=float) if "sigma" in seg else np.full(len(seg), sigma)
     se2 = seg_sigma ** 2 / nbins + MODEL_ERROR ** 2
     use = nbins >= MIN_FIT_BINS
-    lo, hi = purity_range or (0.10, 1.00)
+    lo, hi = (purity_range or (0.10, 1.00))[:2]
+    blast = purity_range[2] if purity_range is not None and len(purity_range) > 2 else None
     purities = np.round(np.arange(max(0.05, lo), min(1.0, hi) + 1e-9, 0.01), 2)
+
+    penalty = PENALTY if blast is None else PENALTY_WITH_BLAST
+
+    def blast_cost(p: float) -> float:
+        return ((p - blast) / BLAST_SD) ** 2 if blast is not None else 0.0
 
     base = expected_log2(normals, normals, 1.0, 2)
     z = np.abs(means - base) / np.sqrt(se2)
-    changed = use & (z > 4.0)
+    changed = use & (z > MIN_CHANGE_Z)
     # the autosomes decide the clone; the sex chromosomes, more prone to artifacts, only when they alone change
     if (changed & auto).any():
         use = use & auto
@@ -191,7 +210,7 @@ def fit_segments(seg: pd.DataFrame, sex: str, sigma: float, max_cn: int = 8,
                 median_cn = cn_for_median[order][np.searchsorted(cum, cum[-1] / 2.0)]
                 if median_cn != m:
                     continue
-            score = float(np.minimum(cost, MAX_SEGMENT_COST).sum()) + PENALTY[m]
+            score = float(np.minimum(cost, MAX_SEGMENT_COST).sum()) + penalty[m] + blast_cost(p)
             clonal_cn = np.where(partial, m, copies)[au] if au.any() else np.array([m])
             # another baseline needs a whole autosome away from it (see the notes at the top)
             if m != 2 and not (au.any() and _whole_autosome_away(chroms[use][au], clonal_cn, nbins[use][au], m)):

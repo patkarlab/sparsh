@@ -160,6 +160,10 @@ def cmd_call(args) -> int:
         ref_names = counted
     to_call = args.samples or counted
     by_key = {safe_name(n).upper(): n for n in counted}
+    if len(by_key) < len(counted):                    # S01 and s01 would otherwise be taken for one sample
+        clashes = sorted({safe_name(n).upper() for n in counted if sum(safe_name(m).upper() == safe_name(n).upper()
+                                                                        for m in counted) > 1})
+        sys.exit(f"Sample names that differ only in case or punctuation: {clashes[:10]}; rename them before calling")
     missing = [n for n in set(ref_names) | set(to_call) if safe_name(n).upper() not in by_key]
     if missing:
         sys.exit(f"Not counted in {counts_dir}: {sorted(missing)[:10]}")
@@ -169,8 +173,12 @@ def cmd_call(args) -> int:
     by_name = {s.name: s for s in samples}
     reference = [by_name[by_key[safe_name(n).upper()]] for n in ref_names]
     calling = [by_name[by_key[safe_name(n).upper()]] for n in to_call]
-    if reference and len(reference) < 10:
-        print(f"Warning: a reference of {len(reference)} samples is small; 30 or more is better")
+    others = len(reference) - (1 if any(s in reference for s in calling) else 0)   # a sample is left out of its own
+    if reference and others < 5:
+        sys.exit(f"A reference needs at least five other samples for each sample called; this one has {others}. "
+                 "Count more samples, or use --no_reference for a first look")
+    if reference and others < 10:
+        print(f"Warning: a reference of {others} other samples is small; 30 or more is better")
     purity = {}
     if sheet is not None and "blast_percent" in sheet.columns:
         for s in calling:
@@ -179,7 +187,7 @@ def cmd_call(args) -> int:
                 b = float(row.iloc[0]["blast_percent"]) / 100.0
                 if not 0.0 < b <= 1.0:
                     sys.exit(f"blast_percent for {s.name} must be between 0 and 100")
-                purity[s.name] = (max(0.05, b - 0.2), min(1.0, b + 0.2))
+                purity[s.name] = (max(0.05, b - 0.2), min(1.0, b + 0.2), b)
     bin_size = None if args.bin_size == "auto" else int(args.bin_size)
     limits = samples[0].meta.get("y_density_thresholds", {})
     if limits:

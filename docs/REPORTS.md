@@ -43,6 +43,6 @@ The file carries a version. The text shipped here was written for model version 
 
 ## Pages that stand alone
 
-Each page is a single HTML file with its styles, chart and figures inside it. It loads no fonts, scripts or images from elsewhere, so it can be archived, sent or opened without a network. Every value taken from an input file is escaped before it is written into a page, so a sample name or an entry of the sheet cannot change the page. The pages print on A4 with margins of 15 mm, and browsers that support page-margin boxes print the sample name, the research-use statement and the page number at the foot of every page.
+Each page is a single HTML file with its styles, chart and figures inside it. It loads no fonts, scripts or images from elsewhere, so it can be archived, sent or opened without a network. Every value taken from an input file is escaped before it is written into a page, so a sample name or an entry of the sheet cannot change the page. The pages print on A4 with margins of 15 mm (17 mm at the foot), and browsers that support page-margin boxes print the sample name, the research-use statement and the page number at the foot of every page.
 
 tests/test_report.sh trains a tiny model on synthetic data, predicts synthetic samples, writes the reports with a sample sheet and copy-number results for two samples, and checks the pages, the summary table and the refusal of bad input.

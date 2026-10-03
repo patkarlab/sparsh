@@ -22,7 +22,8 @@ LEVEL_NAMES = {"subtype": "Subtype", "no_subtype": "Lineage, no specific subtype
                "lineage": "Lineage", "none": "Not reported"}
 LEVEL_COUNTS = {"subtype": "subtype", "no_subtype": "lineage without a specific subtype", "family": "family",
                 "lineage": "lineage", "none": "not reported"}
-DUPLICATE_RULES = {"mean": "mean of the copies with a value", "first": "first column only",
+DUPLICATE_RULES = {"mean": "mean of the copies with a value", "majority": "majority of the copies with a value",
+                   "first": "first column only",
                    "error": "files with repeated probes refused"}
 
 
@@ -371,7 +372,9 @@ def cv_evidence(case: Case, res: Result, ctx: Context) -> Optional[Evidence]:
     share = row.get(f"callable_share_{key}", np.nan)
     acc = row.get(f"accuracy_callable_{key}", np.nan)
     opening = (f"In cross-validation on the training arrays, with nanopore reads simulated at {fmt_fraction(frac)} "
-               f"of the model's CpGs (the tested coverage nearest to this sample's {fmt_pct(case.coverage_pct)}), ")
+               f"of the model's CpGs (the tested coverage nearest to this sample's {fmt_pct(case.coverage_pct)}"
+               + (f"; the figures are those recorded at the threshold {key}" if abs(float(key) - ctx.threshold) > 1e-9
+                  else "") + "), ")
     share = float(share) if share is not None and share == share else np.nan
     acc = float(acc) if acc is not None and acc == acc else np.nan
     if np.isfinite(share) and share == 0:

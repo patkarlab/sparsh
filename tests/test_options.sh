@@ -7,6 +7,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 TMP=$(mktemp -d)
+PYTHON=${PYTHON:-python}
 trap 'rm -rf "$TMP"' EXIT
 
 step() {
@@ -18,42 +19,39 @@ step() {
     fi
 }
 
-step make_data    python tests/make_synthetic.py --output_dir "$TMP/data"
-step train_wide   python scripts/train.py --data_path "$TMP/data/train.pkl" --output_dir "$TMP/run_wide" \
+step make_data    "$PYTHON" tests/make_synthetic.py --output_dir "$TMP/data"
+step train_wide   "$PYTHON" scripts/train.py --data_path "$TMP/data/train.pkl" --output_dir "$TMP/run_wide" \
                       --exclude_prefixes MPAL --n_folds 2 --epochs 3 --hidden_dims 32 16 --device cpu \
                       --train_sim binary --val_sim binary --eval_sims binary oneread --cov_max 0.95 \
                       --coverage_dist uniform --input_encoding scaled --val_coverages 0.1 0.5 0.9 \
                       --eval_coverages 0.1 0.5 0.9
-step ont_coverage python scripts/ont_coverage.py --run "$TMP/run_wide" "$TMP/data/ont" --output "$TMP/ont_coverage.csv"
+step ont_coverage "$PYTHON" scripts/ont_coverage.py --run "$TMP/run_wide" "$TMP/data/ont" --output "$TMP/ont_coverage.csv"
 # per-read call errors, a background class (AML_other), the family fallback and classes left out
 cat > "$TMP/label_map_other.json" <<'EOF'
-{"merge": {"AML_mutated NPM1": "AML_mutated_NPM1_Nup98_DEKnup214", "AML_NUP98-r": "AML_mutated_NPM1_Nup98_DEKnup214",
-           "B-ALL_PAX5 alt": "B-ALL_PAX5_BCR-ABL1_B-ALL_BCR-ABL1_like",
-           "B-ALL_BCR-ABL1 like": "B-ALL_PAX5_BCR-ABL1_B-ALL_BCR-ABL1_like",
-           "B-ALL_BCR-ABL1": "B-ALL_PAX5_BCR-ABL1_B-ALL_BCR-ABL1_like", "AML_KMT2A-r": "AML_other"}}
+{"merge": {"B-ALL_PAX5 P80R": "B-ALL_PAX5_BCR-ABL1_BCR-ABL1-Like", "AML_KMT2A-r": "AML_other"}}
 EOF
 cat > "$TMP/hierarchy.json" <<'EOF'
 {"lineage_by_prefix": [["AML", "AML"], ["B-ALL", "B-ALL"], ["T-ALL", "T-ALL"]],
- "families": {"B-ALL, PAX5 group": ["B-ALL_PAX5_BCR-ABL1_B-ALL_BCR-ABL1_like", "B-ALL_PAX5 P80R"],
+ "families": {"B-ALL, test family": ["B-ALL_PAX5_BCR-ABL1_BCR-ABL1-Like", "B-ALL_ETV6-RUNX1"],
               "family absent from this model": ["X1", "X2"]},
  "no_subtype_classes": ["AML_other"]}
 EOF
-step train_err    python scripts/train.py --data_path "$TMP/data/train.pkl" --output_dir "$TMP/run_err" \
+step train_err    "$PYTHON" scripts/train.py --data_path "$TMP/data/train.pkl" --output_dir "$TMP/run_err" \
                       --exclude_prefixes MPAL --n_folds 2 --epochs 3 --hidden_dims 32 16 --device cpu \
                       --train_sim binary --val_sim binary --eval_sims binary oneread --cov_max 0.95 \
                       --coverage_dist uniform --input_encoding scaled --val_coverages 0.1 0.5 0.9 \
                       --eval_coverages 0.1 0.5 0.9 --call_error_max 0.2 --val_call_error 0.1 --eval_call_errors 0 0.1 \
                       --label_map "$TMP/label_map_other.json" --exclude_classes B-ALL_TCF3-PBX1
-step compare_err  python scripts/compare_runs.py "$TMP/run_wide" "$TMP/run_err" \
+step compare_err  "$PYTHON" scripts/compare_runs.py "$TMP/run_wide" "$TMP/run_err" \
                       --ont_coverage "$TMP/ont_coverage.csv" --output "$TMP/comparison_err.csv"
-step hierarchy    python scripts/hierarchy_report.py "$TMP/run_err" "$TMP/run_wide" --hierarchy "$TMP/hierarchy.json" \
+step hierarchy    "$PYTHON" scripts/hierarchy_report.py "$TMP/run_err" "$TMP/run_wide" --hierarchy "$TMP/hierarchy.json" \
                       --ont_coverage "$TMP/ont_coverage.csv"
-step excluded     python scripts/score_excluded.py --run "$TMP/run_err" --hierarchy "$TMP/hierarchy.json" \
+step excluded     "$PYTHON" scripts/score_excluded.py --run "$TMP/run_err" --hierarchy "$TMP/hierarchy.json" \
                       --coverages 0.1 0.5
-step predict_h    python scripts/predict.py --model_dir "$TMP/run_err" --ont_dir "$TMP/data/ont" \
+step predict_h    "$PYTHON" scripts/predict.py --model_dir "$TMP/run_err" --ont_dir "$TMP/data/ont" \
                       --ground_truth "$TMP/data/ground_truth.csv" --output_dir "$TMP/pred_err" --device cpu \
                       --hierarchy "$TMP/hierarchy.json"
-step call_errors  python - <<'PY'
+step call_errors  "$PYTHON" - <<'PY'
 import numpy as np
 import torch
 from models.corruption import corrupt_numpy, corrupt_rows, corrupt_torch
@@ -76,8 +74,8 @@ except ValueError:
     pass
 print("call errors ok")
 PY
-step hierarchy_none python scripts/hierarchy_report.py "$TMP/run_wide" --hierarchy none
-step hierarchy_unit python - <<'PY'
+step hierarchy_none "$PYTHON" scripts/hierarchy_report.py "$TMP/run_wide" --hierarchy none
+step hierarchy_unit "$PYTHON" - <<'PY'
 import json
 import tempfile
 import numpy as np
@@ -103,7 +101,7 @@ s = score_calls(truth, pred, calls, h)
 assert list(s["reported_correct"].fillna(-1)) == [1.0, 1.0, 1.0, -1.0, 1.0], s
 print("hierarchy ok")
 PY
-step contents_err python - "$TMP" <<'PY'
+step contents_err "$PYTHON" - "$TMP" <<'PY'
 import json
 import os
 import sys
@@ -118,7 +116,7 @@ assert "AML_other" in classes and "B-ALL_TCF3-PBX1" not in classes and "AML_KMT2
 t = json.load(open(f"{tmp}/run_err/config.json"))["training"]
 assert t["call_error_max"] == 0.2 and t["val_call_error"] == 0.1 and t["eval_call_errors"] == [0.0, 0.1], t
 c = pd.read_csv(f"{tmp}/comparison_err.csv", index_col=0)
-for row in ("your ONT samples, binary-err10_*", "mean over oneread-err10_*", "binary-err10_0.50", "binary_0.50"):
+for row in ("ONT samples, binary-err10_*", "mean over oneread-err10_*", "binary-err10_0.50", "binary_0.50"):
     assert row in c.index, f"row {row} missing from the comparison"
 h = pd.read_csv(f"{tmp}/run_err/hierarchy_report/hierarchy_by_condition.csv", index_col=0)
 levels = ["share_subtype", "share_no_subtype", "share_family", "share_lineage", "share_none"]
@@ -137,20 +135,21 @@ s = json.load(open(f"{tmp}/pred_err/summary_metrics.json"))
 assert s["reported_call"]["all_with_truth"]["n"] == 8, s["reported_call"]
 print("call-error and hierarchy contents ok")
 PY
-# dilution by normal marrow; the synthetic data have no normal-marrow class, so T-ALL stands in as the partner
-step train_dil    python scripts/train.py --data_path "$TMP/data/train.pkl" --output_dir "$TMP/run_dil" \
+# dilution by normal marrow; the synthetic data have no normal-marrow class, so T-ALL_TAL1-like stands in as the
+# partner
+step train_dil    "$PYTHON" scripts/train.py --data_path "$TMP/data/train.pkl" --output_dir "$TMP/run_dil" \
                       --exclude_prefixes MPAL --n_folds 2 --epochs 3 --hidden_dims 32 16 --device cpu \
                       --train_sim binary --val_sim binary --eval_sims binary --cov_max 0.95 \
                       --coverage_dist uniform --input_encoding scaled --val_coverages 0.1 0.5 0.9 \
                       --eval_coverages 0.1 0.5 0.9 --dilution_prob 0.5 --blast_min 0.2 --val_dilution \
-                      --eval_blasts 1 0.5 --normal_class T-ALL --final_model
-step dil_refused  bash -c "python scripts/train.py --data_path '$TMP/data/train.pkl' --output_dir '$TMP/run_refused' \
+                      --eval_blasts 1 0.5 --normal_class T-ALL_TAL1-like --final_model
+step dil_refused  bash -c "'$PYTHON' scripts/train.py --data_path '$TMP/data/train.pkl' --output_dir '$TMP/run_refused' \
                       --exclude_prefixes MPAL --n_folds 2 --epochs 1 --hidden_dims 8 --device cpu \
                       --eval_blasts 0.5 --normal_class NO_SUCH_CLASS 2>&1 | grep -q 'which this training set lacks'"
-step compare_dil  python scripts/compare_runs.py "$TMP/run_wide" "$TMP/run_dil" \
+step compare_dil  "$PYTHON" scripts/compare_runs.py "$TMP/run_wide" "$TMP/run_dil" \
                       --ont_coverage "$TMP/ont_coverage.csv" --output "$TMP/comparison_dil.csv"
-step hierarchy_dil python scripts/hierarchy_report.py "$TMP/run_dil" --hierarchy none
-step dilution_unit python - <<'PY'
+step hierarchy_dil "$PYTHON" scripts/hierarchy_report.py "$TMP/run_dil" --hierarchy none
+step dilution_unit "$PYTHON" - <<'PY'
 import numpy as np
 import torch
 from models.dilution import dilute_batch, dilute_fixed, dilute_random, mix, pick_partner
@@ -185,7 +184,7 @@ assert torch.equal(o[2:], xs[2:]) and (o[:2] < 1).all() and (o[:2] >= 0.2 - 1e-6
 assert np.isclose(float(mix(torch.tensor(1.0), torch.tensor(0.0), 0.25)), 0.25)
 print("dilution ok")
 PY
-step contents_dil python - "$TMP" <<'PY'
+step contents_dil "$PYTHON" - "$TMP" <<'PY'
 import json
 import os
 import sys
@@ -199,7 +198,7 @@ t = json.load(open(f"{tmp}/run_dil/config.json"))["training"]
 assert t["dilution_prob"] == 0.5 and t["val_dilution"] and t["eval_blasts"] == [1.0, 0.5], t
 assert os.path.exists(f"{tmp}/run_dil/model.pt")
 c = pd.read_csv(f"{tmp}/comparison_dil.csv", index_col=0)
-for row in ("your ONT samples, binary-blast50_*", "binary-blast50_0.50", "binary_0.50"):
+for row in ("ONT samples, binary-blast50_*", "binary-blast50_0.50", "binary_0.50"):
     assert row in c.index, f"row {row} missing from the comparison"
 print("dilution contents ok")
 PY

@@ -7,6 +7,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 TMP=$(mktemp -d)
+PYTHON=${PYTHON:-python}
 trap 'rm -rf "$TMP"' EXIT
 
 step() {
@@ -18,8 +19,8 @@ step() {
     fi
 }
 
-step make_data    python tests/make_synthetic.py --output_dir "$TMP/data"
-step lists        python - "$TMP" <<'PY'
+step make_data    "$PYTHON" tests/make_synthetic.py --output_dir "$TMP/data"
+step lists        "$PYTHON" - "$TMP" <<'PY'
 import sys
 import pandas as pd
 tmp = sys.argv[1]
@@ -35,28 +36,28 @@ pd.DataFrame({"Sample_ID": [ids[1], ids[2], ids[10], ids[11]], "patient": ["p1",
     f"{tmp}/patients.csv", index=False)
 print("lists written")
 PY
-step pickle       python scripts/make_training_pickle.py --data_path "$TMP/data/train.pkl" --output "$TMP/new.pkl" \
-                      --relabel "$TMP/relabel.csv" --rename "T-ALL=T-ALL_renamed"
-step rename_bad   bash -c "python scripts/make_training_pickle.py --data_path '$TMP/data/train.pkl' --output '$TMP/z.pkl' \
+step pickle       "$PYTHON" scripts/make_training_pickle.py --data_path "$TMP/data/train.pkl" --output "$TMP/new.pkl" \
+                      --relabel "$TMP/relabel.csv" --rename "T-ALL_TAL1-like=T-ALL_renamed"
+step rename_bad   bash -c "'$PYTHON' scripts/make_training_pickle.py --data_path '$TMP/data/train.pkl' --output '$TMP/z.pkl' \
                       --rename NO_SUCH_CLASS=X 2>&1 | grep -q 'no sample has the label'"
-step pickle_again bash -c "python scripts/make_training_pickle.py --data_path '$TMP/data/train.pkl' --output '$TMP/new.pkl' \
+step pickle_again bash -c "'$PYTHON' scripts/make_training_pickle.py --data_path '$TMP/data/train.pkl' --output '$TMP/new.pkl' \
                       2>&1 | grep -q 'exists'"
-step clash        bash -c "python scripts/make_training_pickle.py --data_path '$TMP/data/train.pkl' --output '$TMP/x.pkl' \
+step clash        bash -c "'$PYTHON' scripts/make_training_pickle.py --data_path '$TMP/data/train.pkl' --output '$TMP/x.pkl' \
                       --relabel '$TMP/relabel.csv' '$TMP/relabel_clash.csv' 2>&1 | grep -q 'different new labels'"
-step unknown_id   bash -c "python scripts/make_training_pickle.py --data_path '$TMP/data/train.pkl' --output '$TMP/y.pkl' \
+step unknown_id   bash -c "'$PYTHON' scripts/make_training_pickle.py --data_path '$TMP/data/train.pkl' --output '$TMP/y.pkl' \
                       --relabel '$TMP/relabel_unknown.csv' 2>&1 | grep -q 'not in the pickle'"
-step groups       python scripts/merge_groups.py --groups "$TMP/groups.csv" --patients "$TMP/patients.csv" \
+step groups       "$PYTHON" scripts/merge_groups.py --groups "$TMP/groups.csv" --patients "$TMP/patients.csv" \
                       --output "$TMP/groups_merged.csv"
-step train        python scripts/train.py --data_path "$TMP/new.pkl" --output_dir "$TMP/run" \
+step train        "$PYTHON" scripts/train.py --data_path "$TMP/new.pkl" --output_dir "$TMP/run" \
                       --exclude_prefixes MPAL --n_folds 2 --epochs 3 --hidden_dims 32 16 --device cpu \
                       --train_sim binary --val_sim binary --eval_sims binary --cov_max 0.95 \
                       --coverage_dist uniform --input_encoding scaled --val_coverages 0.1 0.5 0.9 \
                       --eval_coverages 0.1 0.5 0.9 --groups_file "$TMP/groups_merged.csv" --min_samples 2
-step audit        python scripts/label_audit.py --data_path "$TMP/new.pkl" --classes AML B-ALL_High \
+step audit        "$PYTHON" scripts/label_audit.py --data_path "$TMP/new.pkl" --classes AML B-ALL_Aneu \
                       --run "$TMP/run" --n_cpgs 2000 --n_pcs 10 --k 5 --out_dir "$TMP/audit"
-step audit_norun  python scripts/label_audit.py --data_path "$TMP/data/train.pkl" --n_cpgs 1000 --n_pcs 5 --k 5 \
+step audit_norun  "$PYTHON" scripts/label_audit.py --data_path "$TMP/data/train.pkl" --n_cpgs 1000 --n_pcs 5 --k 5 \
                       --out_dir "$TMP/audit_norun"
-step contents     python - "$TMP" <<'PY'
+step contents     "$PYTHON" - "$TMP" <<'PY'
 import json
 import os
 import sys
@@ -74,7 +75,7 @@ ids = (new["Sample_ID"] if "Sample_ID" in new.columns else pd.Series(new.index, 
 label = dict(zip(ids, new["ANNOTATION"].astype(str)))
 assert all(label[s] == "AML_KMT2A_test" for s in relabel["Sample_ID"])
 labels = new["ANNOTATION"].astype(str)
-assert (labels == "T-ALL_renamed").sum() > 0 and not (labels == "T-ALL").any()
+assert (labels == "T-ALL_renamed").sum() > 0 and not (labels == "T-ALL_TAL1-like").any()
 groups = pd.read_csv(f"{tmp}/groups_merged.csv", dtype=str)
 assert groups["group"].nunique() == 2 and len(groups) == 6, groups       # {0,1,2,3} joined through p1, and {10,11}
 config = json.load(open(f"{tmp}/run/config.json"))
@@ -84,7 +85,7 @@ assert config["data"]["groups_file"].endswith("groups_merged.csv")
 audit = pd.read_csv(f"{tmp}/audit/audit.csv")
 assert {"same_label_of_5", "neighbour_majority", "cv_own_prob_mean", "cv_own_prob_binary_0.90", "flag_lamprey",
         "flag_review"} <= set(audit.columns), audit.columns
-assert audit["cv_own_prob_mean"].notna().sum() > 0 and audit["label"].str.startswith(("AML", "B-ALL_High")).all()
+assert audit["cv_own_prob_mean"].notna().sum() > 0 and audit["label"].str.startswith(("AML", "B-ALL_Aneu")).all()
 assert audit["same_label_of_5"].between(0, 5).all() and audit["same_label_fraction"].between(0, 1).all()
 assert os.path.exists(f"{tmp}/audit_norun/flagged.csv")
 print("contents ok")

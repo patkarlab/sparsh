@@ -16,6 +16,7 @@ arm by arm. Changed arms are named in each panel.
 
 from pathlib import Path
 
+import matplotlib.ticker
 import numpy as np
 
 from .fit import expected_log2

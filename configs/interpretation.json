@@ -1,6 +1,6 @@
 {
   "description": "Text shown in the per-case reports of scripts/report.py. Keys of 'classes' are the internal class names of the model (as in the training data and the model folder, not the names shown through configs/display_names.json). Keys of 'families' are the family names of configs/class_hierarchy.json, and keys of 'lineages' and of 'not_in_model' are its lineage names. In a class entry only 'name' and 'summary' are required: 'confirm' is the recommended confirmation, 'note' a point to keep in mind, and 'copy_number_note' is shown next to the copy-number karyotype. A family entry may have its own 'name'. 'levels' holds the text for a sample that is not classified, and 'not_in_model' lists, by lineage, entities the model does not contain. The text was written for model version 0.4.0. It is marked as a draft until a hematopathologist has reviewed it, and every report then says so.",
-  "version": "draft, 30 September 2026",
+  "version": "draft, 3 October 2026",
   "classes": {
     "APL_PML-RARA": {
       "name": "Acute promyelocytic leukemia with PML::RARA fusion",
@@ -46,21 +46,21 @@
       "name": "Acute myeloid leukemia with IDH1 or IDH2 mutation",
       "summary": "The methylation profile matches acute myeloid leukemia with an IDH1 or IDH2 mutation, which causes a distinctive pattern of increased methylation.",
       "confirm": "Test for IDH1 and IDH2 mutations by polymerase chain reaction or sequencing.",
-      "note": "IDH-mutated acute myeloid leukemia is not an entity of its own in the World Health Organization or International Consensus classifications, and the leukemia may also belong to an entity defined by another lesion, such as acute myeloid leukemia with myelodysplasia-related changes. Leukemias with TET2 or WT1 mutations can share part of this methylation pattern.",
-      "copy_number_note": "No copy-number change is characteristic. Losses that count toward myelodysplasia-related changes, such as of 5q or 7q, are flagged in this section when present."
+      "note": "IDH-mutated acute myeloid leukemia is not an entity of its own in the World Health Organization or International Consensus classifications, and the leukemia may also belong to an entity defined by another lesion, such as acute myeloid leukemia, myelodysplasia-related. Leukemias with TET2 or WT1 mutations can share part of this methylation pattern.",
+      "copy_number_note": "No copy-number change is characteristic. Losses that count toward acute myeloid leukemia, myelodysplasia-related, such as of 5q or 7q, are flagged in this section when present."
     },
     "AML_KMT2A-r": {
       "name": "Acute myeloid leukemia with KMT2A rearrangement",
       "summary": "The methylation profile matches acute myeloid leukemia with KMT2A rearrangement.",
       "confirm": "Confirm the rearrangement by fluorescence in situ hybridization with a KMT2A break-apart probe, and identify the partner gene by reverse-transcription polymerase chain reaction or RNA sequencing; the partner affects the assignment of risk.",
-      "note": "The methylation profile overlaps with that of HOX-related acute myeloid leukemia, including NPM1-mutated leukemia. When neither class reaches the threshold on its own, the two are reported together as a family.",
+      "note": "The methylation profile overlaps with that of HOX-related acute myeloid leukemia, including NPM1-mutated leukemia. When no single class reaches the threshold, the HOX-related family, which holds this class together with the HOX-dysregulated and the NUP98::NSD1 classes, is reported instead.",
       "copy_number_note": "A balanced KMT2A rearrangement does not change copy number. Trisomy 8 is a common additional change."
     },
     "AML_NUP98-NSD1": {
       "name": "Acute myeloid leukemia with NUP98::NSD1 fusion",
       "summary": "The methylation profile matches acute myeloid leukemia with the NUP98::NSD1 fusion.",
       "confirm": "Confirm NUP98::NSD1 by reverse-transcription polymerase chain reaction, RNA sequencing or fluorescence in situ hybridization; the translocation is not visible on a conventional karyotype. An internal tandem duplication of FLT3 often accompanies it.",
-      "note": "The methylation profile is close to that of HOX-related acute myeloid leukemia. When neither class reaches the threshold on its own, the two are reported together as a family.",
+      "note": "The methylation profile is close to that of HOX-related acute myeloid leukemia. When no single class reaches the threshold, the HOX-related family, which holds this class together with the HOX-dysregulated and the KMT2A-rearranged classes, is reported instead.",
       "copy_number_note": "The t(5;11)(q35.3;p15.4) is cryptic and balanced, and does not change copy number."
     },
     "AML_ETV6-r": {
@@ -111,8 +111,8 @@
     },
     "B-ALL_Aneuploidy": {
       "name": "B-lymphoblastic leukemia with high hyperdiploidy or hypodiploidy",
-      "summary": "The methylation profile matches the combined class of B-lymphoblastic leukemia with an abnormal chromosome number, which holds high hyperdiploid leukemia (51 to 67 chromosomes) and hypodiploid leukemia.",
-      "confirm": "Establish the chromosome number by karyotype, by the DNA index on flow cytometry, or from the copy-number section of this report. High hyperdiploidy carries a favorable prognosis and hypodiploidy an unfavorable one, and a hypodiploid clone that has doubled its chromosomes can look hyperdiploid.",
+      "summary": "The methylation profile matches the combined class of B-lymphoblastic leukemia with an abnormal chromosome number, which holds high hyperdiploid leukemia (51 to 65 chromosomes) and most hypodiploid leukemia; hypodiploid leukemia is not a class of its own, and some of its arrays fall into other classes.",
+      "confirm": "Establish the chromosome number by karyotype or by the DNA index on flow cytometry; the copy-number section of this report, when present, indicates it but does not replace them. High hyperdiploidy carries a favorable prognosis and hypodiploidy an unfavorable one, and a hypodiploid clone that has doubled its chromosomes can look hyperdiploid.",
       "note": "Low hyperdiploid leukemia (47 to 50 chromosomes) can also be assigned to this class. In low hypodiploid leukemia TP53 mutations are frequent and often inherited, so germline testing should be considered.",
       "copy_number_note": "High hyperdiploidy shows gains of whole chromosomes, most often X, 4, 6, 10, 14, 17, 18 and 21, often with two extra copies of chromosome 21. A doubled hypodiploid clone shows its retained chromosomes at four copies and the others at two, with no chromosome at three copies; this section flags that pattern."
     },
@@ -163,13 +163,13 @@
     "B-ALL_iAMP21": {
       "name": "B-lymphoblastic leukemia with intrachromosomal amplification of chromosome 21",
       "summary": "The methylation profile matches B-lymphoblastic leukemia with intrachromosomal amplification of chromosome 21 (iAMP21).",
-      "confirm": "Confirm by fluorescence in situ hybridization with a RUNX1 probe: five or more RUNX1 signals per cell, with at least three extra copies on one abnormal chromosome 21.",
+      "confirm": "Confirm by fluorescence in situ hybridization with a RUNX1 probe: five or more RUNX1 signals per interphase cell, or at least three extra copies of RUNX1 on one abnormal chromosome 21 in metaphase.",
       "copy_number_note": "The copy-number profile is informative here: chromosome 21 shows several copy-number levels, with the highest around RUNX1 and often a loss toward the end of 21q. This section flags that pattern."
     },
     "T-ALL_TAL1-like": {
       "name": "T-lymphoblastic leukemia, TAL1-like",
       "summary": "The methylation profile matches T-lymphoblastic leukemia with activation of TAL1 or a related gene (TAL2, LMO1 or LMO2).",
-      "confirm": "Confirm STIL::TAL1 by reverse-transcription polymerase chain reaction, and TAL1 or LMO2 rearrangements by fluorescence in situ hybridization or RNA sequencing.",
+      "confirm": "Confirm STIL::TAL1 by reverse-transcription polymerase chain reaction, and TAL1 or LMO2 rearrangements by fluorescence in situ hybridization or RNA sequencing. Small insertions that create an enhancer upstream of TAL1 or LMO2 escape these tests and are found only by targeted or whole-genome sequencing of those regions.",
       "copy_number_note": "The STIL::TAL1 deletion at 1p33 spans about 90 thousand bases, too small to be seen at this resolution. Deletion of CDKN2A at 9p21.3, frequent in T-lymphoblastic leukemia, is visible when it is large."
     },
     "T-ALL_TLX1": {
@@ -263,7 +263,7 @@
   },
   "not_in_model": {
     "AML": [
-      "Acute myeloid leukemia with myelodysplasia-related changes, defined by karyotype or by mutations",
+      "Acute myeloid leukemia, myelodysplasia-related, defined by karyotype or by mutations",
       "Acute myeloid leukemia with MECOM rearrangement",
       "Acute myeloid leukemia with TP53 mutation",
       "Acute myeloid leukemia with BCR::ABL1 fusion",

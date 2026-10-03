@@ -12,11 +12,11 @@ python scripts/run_sample.py --sample S01 --bam /data/run1/bam_pass/barcode01 --
     --panel cn_panel.tsv.gz --sex F --blast_percent 80
 ```
 
---bam takes one or more BAM files, or folders of them. A folder is read for the files ending in .bam directly inside it, leaving out files of failed reads, which MinKNOW marks with _fail_ in their names, so the barcode folder of a run's bam_pass, with its hourly files, can be given as it is. The sex (F or M) and the blast percentage are optional. When given, they go into the sample's sample_sheet.csv, which the copy-number call uses to set the sex chromosomes and to keep the leukemic fraction within 20 points of the blast percentage, and which the report shows. --threads sets the processors for alignment, sorting and modkit (8 by default). The sample name may hold letters, digits, dots, hyphens and underscores. The files of the run keep it as given, and the predictions and the report show it in capitals, as scripts/predict.py names samples.
+--bam takes one or more BAM files, or folders of them. A folder is read for the files ending in .bam directly inside it, leaving out files of failed reads, which MinKNOW marks with _fail_ in their names, so the barcode folder of a run's bam_pass, with its hourly files, can be given as it is. The sex (F or M) and the blast percentage are optional. When given, they go into the sample's sample_sheet.csv, which the copy-number call uses to set the sex chromosomes and to weigh the leukemic fraction by the blast percentage (docs/COPY_NUMBER.md), and which the report shows. --threads sets the processors for alignment, sorting and modkit (8 by default). The sample name may hold letters, digits, dots, hyphens and underscores, and starts with a letter or digit. The files of the run keep it as given, and the predictions and the report show it in capitals, as scripts/predict.py names samples.
 
 ## The steps
 
-Each step writes into its own folder of --out_dir, and a step that has finished is not run again. A run that stopped, for example at the walltime of a batch job, therefore goes on from the step it was in when it is started again with the same command. --redo with the name of a step runs that step and the ones after it again.
+Each step writes into its own folder of --out_dir, and a step that has finished is not run again. A run that stopped, for example at the walltime of a batch job, therefore goes on from the step it was in when it is started again with the same command. --redo with the name of a step runs that step and the ones after it again. A sex or blast percentage given only when a run is resumed after its copy-number step, or other BAM files given after its bam step, are not taken up silently: the first needs --redo copy_number, and the second --redo bam, otherwise the run keeps what it was made with and says so.
 
 The first step, bam, makes one sorted and indexed file of the reads, <sample>.bam. When every file is already aligned to the reference, which means its header lists the same sequences with the same lengths as the reference's .fai, the files are merged and sorted, and the number of records in the result is checked against the inputs; a single such file that is already sorted is linked rather than copied. Otherwise the reads of all files are aligned again: every aligned file, whether aligned to this reference or another, is first returned to unaligned reads in their original orientation (samtools reset, primary records only), and all the reads are then aligned with dorado aligner, keeping the tags that carry the modified-base calls. --aligner minimap2 aligns with samtools fastq and minimap2 -y instead, using the index <reference>.map-ont.mmi when it exists (made with `minimap2 -x map-ont -d hg19.fasta.map-ont.mmi hg19.fasta`). The number of primary records in the result is then checked against the reads before the step counts as finished.
 
@@ -26,7 +26,7 @@ The second step, methylation, runs modkit pileup,
 modkit pileup --ref hg19.fasta --modified-bases 5mC 5hmC --combine-mods --cpg SAMPLE.bam SAMPLE_pileup.bed
 ```
 
-and turns the pileup into the model's input with scripts/bedmethyl_to_csv.py (next section). The pileup is kept, compressed.
+with --suppress-progress added so that run.log stays readable, and turns the pileup into the model's input with scripts/bedmethyl_to_csv.py (next section). The pileup is kept, compressed.
 
 The third step, prediction, runs scripts/predict.py on the sample's CSV file (docs/NANOPORE.md). It runs on the processor unless --device says otherwise, and takes from one to a few minutes for one sample, most of it to load the five networks.
 
@@ -42,7 +42,7 @@ modkit reports every CpG with reads, once for each strand, with 5-methylcytosine
 
 The calls of the two strands are added: a probe gets 1 when more than half of the calls at its CpG are modified, 0 when fewer than half are, and no value when they are split exactly in half. A CpG is a single site to the model, and its two strands are mostly methylated alike, so adding them puts the reads of both strands behind each call; at the low depth of these runs that roughly doubles the reads behind a call and gives a call at many more of the model's CpGs.
 
-With --strands forward the probe takes the row at its own base alone and gets 1 when 50% or more of its calls are modified.
+With --strands forward the probe takes the row at its own base alone, for most probes the forward strand, and gets 1 when 50% or more of its calls are modified.
 
 The manifest is checked before anything else runs: a file with fewer probe rows than its header declares on the line Loci Count, such as a copy cut short in transfer, is refused, because it would otherwise give matrices with a fraction of the probes and no error.
 

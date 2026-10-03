@@ -29,7 +29,8 @@ Inputs
                      blast_percent, collection_date), shown as sample information. Names are matched as predict.py
                      names samples: stripped and upper-cased. Do not put names of patients in it.
   --karyotype_dir    folder of <SAMPLE>.karyotype.json files from the copy-number module, each optionally with
-                     <SAMPLE>.karyotype.svg or .png; whatever the JSON holds is shown, missing keys are left out.
+                     <SAMPLE>.karyotype.svg or .png and <SAMPLE>.chromosomes.svg or .png; whatever the JSON holds
+                     is shown, missing keys are left out.
   --threshold        reporting threshold (default: the prediction run's, else 0.90). Another value recomputes the
                      reported calls from the class probabilities (see report/inputs.py).
 

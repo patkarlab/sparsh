@@ -54,7 +54,9 @@ class ArgumentParser(argparse.ArgumentParser):
 
 
 def parse_args():
-    p = ArgumentParser(description=f"SPARSH {VERSION}: nested cross-validation training",
+    p = ArgumentParser(description=f"SPARSH {VERSION}: nested cross-validation training. The defaults below are "
+                                   "not the settings of the released model; those are in configs/recipe_v0.4.0.args, "
+                                   "read with a leading @ (see docs/TRAINING.md).",
                        formatter_class=argparse.ArgumentDefaultsHelpFormatter, fromfile_prefix_chars="@")
     d = p.add_argument_group("data")
     d.add_argument("--data_path", required=True, help="Training pickle (samples x CpGs, ANNOTATION column)")
@@ -110,7 +112,10 @@ def parse_args():
 
     v = p.add_argument_group("validation and evaluation")
     v.add_argument("--n_folds", type=int, default=5)
-    v.add_argument("--inner_val_frac", type=float, default=0.15)
+    v.add_argument("--inner_val_frac", type=float, default=0.15,
+                   help="Share of each outer fold's training part held out as the inner validation split. It is "
+                        "realised as one fold of a stratified split into round(1/frac) parts, so 0.15 gives one "
+                        "seventh")
     v.add_argument("--val_sim", choices=SIMULATIONS, default=None, help="Default: same as --train_sim")
     v.add_argument("--val_coverages", type=float, nargs="+", default=[0.05, 0.1, 0.2, 0.3])
     v.add_argument("--eval_coverages", type=float, nargs="+", default=[0.03, 0.05, 0.1, 0.2, 0.3])
