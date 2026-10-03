@@ -57,4 +57,4 @@ scripts/hierarchy_report.py shows what the family and lineage fallback adds, fro
 
 ## Reproducibility
 
-Every run sets the seeds of Python, NumPy and PyTorch and asks PyTorch for deterministic kernels (training/reproducibility.py). Runs on the same hardware and software agree closely, but PyTorch does not guarantee bitwise identity for every operation. The batch jobs set PYTHONHASHSEED before Python starts. jobs/train.pbs trains with the recipe file on a PBS cluster, reading the paths from jobs/settings.sh; a run of the released recipe on 2,845 arrays took about an hour on one H200 GPU.
+Every run sets the seeds of Python, NumPy and PyTorch and asks PyTorch for deterministic kernels (training/reproducibility.py). Runs on the same hardware and software agree closely, but PyTorch does not guarantee bitwise identity for every operation. The batch jobs set PYTHONHASHSEED before Python starts. jobs/train.pbs trains with the recipe file on a PBS cluster, reading the paths from jobs/settings.sh; a run of the released recipe on 2,845 arrays took about an hour on one NVIDIA H200 graphics processing unit.

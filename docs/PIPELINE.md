@@ -28,7 +28,7 @@ modkit pileup --ref hg19.fasta --modified-bases 5mC 5hmC --combine-mods --cpg SA
 
 and turns the pileup into the model's input with scripts/bedmethyl_to_csv.py (next section). The pileup is kept, compressed.
 
-The third step, prediction, runs scripts/predict.py on the sample's CSV file (docs/NANOPORE.md). It runs on the CPU unless --device says otherwise, and takes from one to a few minutes for one sample, most of it to load the five networks.
+The third step, prediction, runs scripts/predict.py on the sample's CSV file (docs/NANOPORE.md). It runs on the processor unless --device says otherwise, and takes from one to a few minutes for one sample, most of it to load the five networks.
 
 The fourth step, copy_number, counts the reads in 100 kb bins, primary alignments with a mapping quality of 20 or more, and calls copy number against the stored reference given by --panel (docs/COPY_NUMBER.md). --no_panel instead calls with GC correction only, which is a first look and is marked as such. A sample too shallow to call gets no karyotype, and the report then has no copy-number section.
 
@@ -38,7 +38,7 @@ The last step, report, writes the report page with scripts/report.py (docs/REPOR
 
 The model reads one row per sample with a call of 1 or 0 for every array probe whose CpG the reads cover (docs/NANOPORE.md). scripts/bedmethyl_to_csv.py makes that row from the pileup.
 
-modkit reports every CpG with reads, once for each strand, with 5-methylcytosine and 5-hydroxymethylcytosine counted together as modified. The probes come from the manifest: the probe identifier from the column IlmnID, the chromosome from the column CHR, and the position from MAPINFO_37, the GRCh37 position (the column MAPINFO of the v2.0 manifest is the GRCh38 one). A probe is placed on one base of its CpG, in most cases the C of the forward strand, and the row of the other strand lies one base away.
+modkit reports every CpG with reads, once for each strand, with 5-methylcytosine and 5-hydroxymethylcytosine counted together as modified. The probes come from the manifest: the probe identifier from the column IlmnID, the chromosome from the column CHR, and the position from MAPINFO_37, the GRCh37 position (the column MAPINFO of the v2.0 manifest is the GRCh38 one). CHR is the GRCh38 chromosome. Of the 936,754 probes of EPIC-8v2-0_A2.csv with a GRCh37 position and a chromosome in both builds, 55 have a GRCh38 chromosome that differs from the GRCh37 one (the column CHR_37); these are looked up on the wrong chromosome, where they get no call or the call of an unrelated CpG. One of the 55 is among the 358,313 probes of the model's CpGs. SPARSH 1.0.0 keeps this rule, with which the model's input was made for the samples of the article. A probe is placed on one base of its CpG, in most cases the C of the forward strand, and the row of the other strand lies one base away.
 
 The calls of the two strands are added: a probe gets 1 when more than half of the calls at its CpG are modified, 0 when fewer than half are, and no value when they are split exactly in half. A CpG is a single site to the model, and its two strands are mostly methylated alike, so adding them puts the reads of both strands behind each call; at the low depth of these runs that roughly doubles the reads behind a call and gives a call at many more of the model's CpGs.
 

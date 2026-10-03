@@ -16,10 +16,12 @@ for reads aligned to GRCh37 (hg19): one row for each strand of every CpG with re
 The probes come from Illumina's manifest of the MethylationEPIC v2.0 array (EPIC-8v2-0_A2.csv; its column names are
 on line 8): the probe identifier from the first column whose name contains "ilmn" (IlmnID), the chromosome from the
 column CHR, and the position from the first column whose name contains both "mapinfo" and "37", the GRCh37 position
-MAPINFO_37 (without such a column, the first whose name contains "mapinfo"). Chromosome names are compared without
-"chr", other punctuation and case, and only chromosomes 1 to 22, X and Y are used. A probe is placed on one base of
-its CpG, in most cases the C of the forward strand; the row of the other strand lies one base after it (one base
-before it for a probe placed on the G).
+MAPINFO_37 (without such a column, the first whose name contains "mapinfo"). CHR is the GRCh38 chromosome; for 55
+probes of EPIC-8v2-0_A2.csv it is not the GRCh37 one (CHR_37), and those probes get no call or the call of an
+unrelated CpG (docs/PIPELINE.md). Chromosome names are compared without "chr", other punctuation and case, and
+only chromosomes 1 to 22, X and Y are used. A probe is placed on one base of its CpG, in most cases the C of the
+forward strand; the row of the other strand lies one base after it (one base before it for a probe placed on
+the G).
 
 By default the calls of the two strands of the probe's CpG are added: the value is 1 when more than half of them are
 modified, 0 when fewer than half are, and the probe is left out when they are split exactly in half. A CpG is one

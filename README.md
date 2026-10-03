@@ -12,7 +12,7 @@ The classifier is in data/, models/, training/ and evaluation/, with scripts/tra
 
 ## System requirements
 
-SPARSH runs on 64-bit Linux. The Python parts need Python 3.10 to 3.12 with PyTorch, NumPy, pandas, SciPy, scikit-learn and matplotlib. The tests pass on Ubuntu 24.04 (x86-64) with the versions that envs/sparsh.yml installed on October 2, 2026: Python 3.12, PyTorch 2.13 (built for the CPU), NumPy 2.5, pandas 3.0, SciPy 1.18, scikit-learn 1.9, matplotlib 3.11, samtools 1.24, modkit 0.6.1 and minimap2 2.31. Working from a sample's reads also needs samtools 1.17 or later (for samtools reset), modkit and, for reads that are not yet aligned, minimap2 or dorado; SPARSH was tested with modkit 0.6.1 and dorado 1.3.0. The batch jobs and the tests are bash scripts that need bash 4 or later, which macOS does not have by default.
+SPARSH runs on 64-bit Linux. The Python parts need Python 3.10 to 3.12 with PyTorch, NumPy, pandas, SciPy, scikit-learn and matplotlib, and scripts/tune.py also needs Optuna. The tests pass on Ubuntu 24.04 (x86-64) with the versions that envs/sparsh.yml installed on October 2, 2026: Python 3.12, PyTorch 2.13 (built for the processor), NumPy 2.5, pandas 3.0, SciPy 1.18, scikit-learn 1.9, matplotlib 3.11, Optuna 5.0, samtools 1.24, modkit 0.6.1 and minimap2 2.31. The model was trained, and the samples of the article were classified, on a cluster running Red Hat Enterprise Linux 8.10 (x86-64); its environment at release had Python 3.11.14, PyTorch 2.5.1 (built for CUDA 12.1), NumPy 2.4.0, pandas 2.3.3, SciPy 1.16.3, scikit-learn 1.8.0, matplotlib 3.11.2, Optuna 4.6.0, samtools 1.24, minimap2 2.31 and modkit 0.6.1. Working from a sample's reads also needs samtools 1.17 or later (for samtools reset), modkit and, for reads that are not yet aligned, minimap2 or dorado; SPARSH was tested with modkit 0.6.1 and dorado 1.3.0. The batch jobs and the tests are bash scripts that need bash 4 or later, which macOS does not have by default.
 
 Prediction needs no graphics processing unit, and scripts/predict.py uses one when it is present. The model's five networks take about 8 GB of memory together, and the batch jobs ask for more to be safe. Training the full model needs a graphics processing unit: the model was trained on one NVIDIA H200, in about an hour. The toy model of the demo trains on the processor.
 
@@ -28,7 +28,7 @@ bash tests/run_all.sh
 
 envs/sparsh.yml installs Python with the packages above, samtools, modkit 0.6.1, minimap2 and Optuna from conda-forge and bioconda (mamba and micromamba read the same file). Creating it takes a few minutes; with micromamba on a fast connection it took about a minute, and the environment takes about 3 GB. With pip, `pip install -r requirements.txt` installs the Python packages, and samtools, modkit and minimap2 are installed separately. dorado is not packaged for conda; it is installed from Oxford Nanopore's releases when it is wanted as the aligner, and without it scripts/run_sample.py aligns reads with --aligner minimap2.
 
-tests/run_all.sh runs every part on synthetic data, on the CPU, in about seven minutes on two processor cores. Each test prints a line ending in PASSED, or SKIPPED when a tool it needs (samtools, modkit, Optuna) is missing, and the run ends with ALL TESTS PASSED. Without dorado, the summary also notes that the pipeline test passed with some steps skipped.
+tests/run_all.sh runs every part on synthetic data, without a graphics processing unit, in about seven minutes on two processor cores. Each test prints a line ending in PASSED, or SKIPPED when a tool it needs (samtools, modkit, Optuna) is missing, and the run ends with ALL TESTS PASSED. Without dorado, the summary also notes that the pipeline test passed with some steps skipped.
 
 ## Demo
 
@@ -50,7 +50,7 @@ tests/test_pipeline.sh runs scripts/run_sample.py on synthetic reads with modifi
 
 ## Getting the model
 
-The model described in the article, version 0.4.0, is archived on Zenodo under the digital object identifier 10.5281/zenodo.MODEL_RECORD (https://doi.org/10.5281/zenodo.MODEL_RECORD), with a checksum for every file. Until the article is published, access is restricted to its editors and reviewers, who receive a link with the submission. The record holds the model folder, sparsh_model_0.4.0, of several gigabytes, mostly the five networks, under the license given on the record. After unpacking, `sha256sum -c SHA256SUMS` in the model folder checks every file. docs/MODEL_CARD.md describes the model, its training data, its performance in cross-validation and its limits.
+The model described in the article, version 0.4.0, is archived on Zenodo under the digital object identifier 10.5281/zenodo.MODEL_RECORD (https://doi.org/10.5281/zenodo.MODEL_RECORD), with a checksum for every file. Until the article is published, access is restricted to its editors and reviewers, who receive a link with the submission. The record holds the model folder, sparsh_model_0.4.0, of several gigabytes, mostly the five networks, under the Creative Commons Attribution 4.0 International License (https://creativecommons.org/licenses/by/4.0/). After unpacking, `sha256sum -c SHA256SUMS` in the model folder checks every file. docs/MODEL_CARD.md describes the model, its training data, its performance in cross-validation and its limits.
 
 ## Classifying nanopore samples
 
@@ -118,4 +118,4 @@ If you use SPARSH, please cite the article that describes it. Until it is publis
 
 ## License
 
-MIT; see LICENSE.
+The code is under the MIT License; see LICENSE. The model files on Zenodo are under the Creative Commons Attribution 4.0 International License (see Getting the model).
