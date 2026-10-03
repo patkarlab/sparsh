@@ -147,7 +147,7 @@ These figures describe single networks on simulated reads. The performance on na
 
 envs/sparsh.yml installs all of these except dorado; see [Installation](#installation). Versions that SPARSH has run with:
 
-- The tests pass on Ubuntu 24.04 (x86-64) with the versions that envs/sparsh.yml installed on October 2, 2026: Python 3.12, PyTorch 2.13 (built for the processor), NumPy 2.5, pandas 3.0, SciPy 1.18, scikit-learn 1.9, matplotlib 3.11, Optuna 5.0, samtools 1.24, modkit 0.6.1 and minimap2 2.31.
+- The tests pass on Red Hat Enterprise Linux 8.10 (x86-64) with the versions that envs/sparsh.yml installed on October 3, 2026: Python 3.13.15, PyTorch 2.13.0 (built for the processor), NumPy 2.5.3, pandas 3.0.6, SciPy 1.18.1, scikit-learn 1.9.1, matplotlib 3.11.2, Optuna 5.0.0, samtools 1.24, modkit 0.6.1 and minimap2 2.31, and on Ubuntu 24.04 (x86-64) with Python 3.12 and the same library versions, installed by the same file on October 2, 2026.
 - The model was trained on a cluster running Red Hat Enterprise Linux 8.10 (x86-64), on one NVIDIA H200, with Python 3.11.14, PyTorch 2.5.1 built for CUDA 12.1, NumPy 2.4.0, pandas 2.3.3 and scikit-learn 1.8.0, as environment.json in the model folder records. The samples of the article were classified on the same cluster, which also had SciPy 1.16.3, matplotlib 3.11.2 and Optuna 4.6.0, and their methylation calls were made with modkit 0.6.1 and samtools 1.24.
 
 ### Reference files
