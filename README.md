@@ -234,9 +234,10 @@ SAMTOOLS=/path/to/samtools MODKIT=/path/to/modkit MINIMAP2=/path/to/minimap2 DOR
 
 ### Getting the model
 
-The model described in the article, version 0.4.0, is archived on Zenodo under the digital object identifier 10.5281/zenodo.MODEL_RECORD (https://doi.org/10.5281/zenodo.MODEL_RECORD). Until the article is published, access to its files is restricted to the editors and reviewers, who receive a link with the submission. The record holds one file, sparsh_model_0.4.0.zip, of about 7 gigabytes, under the Creative Commons Attribution 4.0 International License (https://creativecommons.org/licenses/by/4.0/).
+The model described in the article, version 0.4.0, is archived on Zenodo under the digital object identifier 10.5281/zenodo.23118416 (https://doi.org/10.5281/zenodo.23118416). Until the article is published, access to its files is restricted to the editors and reviewers, who receive a link with the submission. The record holds the model folder as one zip file of about 7 gigabytes, sparsh_model_0.4.0.zip, stored in seven parts of at most 1 gibibyte, sparsh_model_0.4.0.zip.part00 to sparsh_model_0.4.0.zip.part06, under the Creative Commons Attribution 4.0 International License (https://creativecommons.org/licenses/by/4.0/). Download the seven parts into one folder, join them into the zip and unpack it:
 
 ```bash
+cat sparsh_model_0.4.0.zip.part* > sparsh_model_0.4.0.zip     # joins the parts in the order of their names
 unzip sparsh_model_0.4.0.zip        # or: python -m zipfile -e sparsh_model_0.4.0.zip .
 cd sparsh_model_0.4.0
 sha256sum -c SHA256SUMS             # every line should end in OK
@@ -505,7 +506,7 @@ docs/        documentation
 
 ## Citation
 
-If you use SPARSH, please cite the article that describes it. Until it is published, please cite this software; CITATION.cff has the details. Questions and problems can be raised as issues at https://github.com/patkarlab/sparsh/issues.
+If you use SPARSH, please cite the article that describes it. Until it is published, please cite this software; CITATION.cff has the details. If you use the model, please cite its Zenodo record as well, 10.5281/zenodo.23118416. Questions and problems can be raised as issues at https://github.com/patkarlab/sparsh/issues.
 
 ## License
 
