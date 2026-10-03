@@ -10,17 +10,20 @@ Events
 
 ISCN
     ISCN 2024 introduced "sseq" for copy-number results of shallow (low-pass) genome sequencing, written as
-    for microarrays: the build in brackets, only abnormal copy numbers listed, sex chromosomes first, whole
-    chromosomes with the same copy number grouped, whole chromosomes before segments, "x" and the copy
-    number after each item, and the proportion of cells in brackets for a change present in part of them,
-    for example
+    for microarrays: the build in brackets, only abnormal copy numbers listed, "x" and the copy number after
+    each item, and the proportion of cells in brackets for a change present in part of them, for example
 
         sseq[GRCh37] (X)x3,(4,6,10,14,17,18)x3,(21)x4
         sseq[GRCh37] (7)x1,(8)x3,5q14.3q33.1(83000001_150000000)x1
         sseq[GRCh37] 17p13.3p11.2(1_22200000)x1[0.4]
 
-    Segments give the bands at their two ends and their coordinates, 1-based, without separators. A
-    normal result lists the full complement: (1-22,X)x2 for a woman, (1-22)x2,(X,Y)x1 for a man.
+    The order of the items is SPARSH's own: first the whole chromosomes, the sex chromosomes before the
+    autosomes and those with the same copy number in one group, then the arm and segmental changes, the
+    sex chromosomes first and then in chromosome order. ISCN orders the changes of a karyotype by
+    chromosome alone, with the sex chromosomes first; in that order the second example would begin with
+    the deletion on chromosome 5. Segments give the bands at their two ends and their coordinates, 1-based,
+    without separators. A normal result lists the full complement: (1-22,X)x2 for a woman, (1-22)x2,(X,Y)x1
+    for a man.
 
 Karyotype line
     The number of chromosomes and the whole-chromosome gains and losses, as a karyotype would give them,

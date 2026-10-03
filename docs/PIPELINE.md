@@ -30,7 +30,7 @@ and turns the pileup into the model's input with scripts/bedmethyl_to_csv.py (ne
 
 The third step, prediction, runs scripts/predict.py on the sample's CSV file (docs/NANOPORE.md). It runs on the processor unless --device says otherwise, and takes from one to a few minutes for one sample, most of it to load the five networks.
 
-The fourth step, copy_number, counts the reads in 100 kb bins, primary alignments with a mapping quality of 20 or more, and calls copy number against the stored reference given by --panel (docs/COPY_NUMBER.md). --no_panel instead calls with GC correction only, which is a first look and is marked as such. A sample too shallow to call gets no karyotype, and the report then has no copy-number section.
+The fourth step, copy_number, counts the reads in bins of 100,000 bases, primary alignments with a mapping quality of 20 or more, and calls copy number against the stored reference given by --panel (docs/COPY_NUMBER.md). --no_panel instead calls with GC correction only, which is a first look and is marked as such. A sample too shallow to call gets no karyotype, and the report then has no copy-number section.
 
 The last step, report, writes the report page with scripts/report.py (docs/REPORTS.md) and copies it to <out_dir>/<sample>.report.html.
 
