@@ -154,16 +154,20 @@ envs/sparsh.yml installs all of these except dorado; see [Installation](#install
 
 These are not part of the repository; download them once.
 
-- The human reference genome GRCh37 (hg19) as one FASTA file with chromosomes 1 to 22, X and Y, named with or without "chr", and its samtools index. UCSC's hg19, for example:
+- The human reference genome GRCh37 (hg19) as one FASTA file with its samtools index. The samples of the article were aligned to the 24 main chromosomes of UCSC's hg19, chr1 to chr22, chrX and chrY, without the mitochondrial genome, the alternative haplotypes and the unplaced sequences. These commands make that file, hg19_main.fa, byte for byte:
 
   ```bash
   wget https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz
   gunzip hg19.fa.gz
   samtools faidx hg19.fa
-  minimap2 -x map-ont -d hg19.fa.map-ont.mmi hg19.fa    # only for --aligner minimap2
+  samtools faidx -n 50 hg19.fa chr{1..22} chrX chrY > hg19_main.fa
+  md5sum hg19_main.fa                                            # 1831aa6238818b0686686125b51b91e5
+  samtools faidx hg19_main.fa
+  minimap2 -x map-ont -d hg19_main.fa.map-ont.mmi hg19_main.fa   # only for --aligner minimap2
+  rm hg19.fa hg19.fa.fai
   ```
 
-  Reads that are already aligned are used as they are only when they were aligned to this same FASTA, with the same sequence names and lengths; otherwise they are aligned again. Use one reference for all samples and for the copy-number panel. The minimap2 index next to the FASTA saves building it again for every sample.
+  Another GRCh37 FASTA with chromosomes 1 to 22, X and Y, named with or without "chr", works as well. Reads that are already aligned are used as they are only when they were aligned to the same FASTA, with the same sequence names and lengths; otherwise they are aligned again. Use one reference for all samples and for the copy-number panel. The minimap2 index next to the FASTA saves building it again for every sample.
 - Illumina's manifest of the Infinium MethylationEPIC v2.0 array, EPIC-8v2-0_A2.csv, from the Infinium MethylationEPIC v2.0 Product Files (https://support.illumina.com/downloads/infinium-methylationepic-v2-0-product-files.html). SPARSH takes the probes' GRCh37 positions from it.
 - The model folder, sparsh_model_0.4.0, from Zenodo (see [Getting the model](#getting-the-model)).
 - For the copy-number karyotype of single samples, a copy-number panel, which a laboratory makes once from its own samples (see [The copy-number karyotype](#the-copy-number-karyotype)).
@@ -263,7 +267,7 @@ With the reference files of [Dependencies](#dependencies) in place:
 
 ```bash
 python scripts/run_sample.py --sample S01 --bam /data/run1/bam_pass/barcode01 --out_dir results/S01 \
-    --reference hg19.fa --manifest EPIC-8v2-0_A2.csv --model_dir sparsh_model_0.4.0 \
+    --reference hg19_main.fa --manifest EPIC-8v2-0_A2.csv --model_dir sparsh_model_0.4.0 \
     --panel cn_panel.tsv.gz --sex F --blast_percent 80
 ```
 
@@ -311,7 +315,7 @@ A stopped run goes on where it stopped when the same command is given again. doc
 The steps can also be run on their own, for many samples at once. modkit needs each sample's reads as one BAM file aligned to GRCh37, sorted and indexed, such as bam/S01.bam of scripts/run_sample.py:
 
 ```bash
-modkit pileup --ref hg19.fa --modified-bases 5mC 5hmC --combine-mods --cpg SAMPLE.bam SAMPLE_pileup.bed
+modkit pileup --ref hg19_main.fa --modified-bases 5mC 5hmC --combine-mods --cpg SAMPLE.bam SAMPLE_pileup.bed
 python scripts/bedmethyl_to_csv.py --bedmethyl SAMPLE_pileup.bed --manifest EPIC-8v2-0_A2.csv \
     --sample SAMPLE --out samples/SAMPLE.csv
 python scripts/ont_coverage.py --run sparsh_model_0.4.0 samples

@@ -2,7 +2,7 @@
 
 scripts/run_sample.py runs every step of SPARSH for one sample: it takes the sample's nanopore reads as BAM files, aligned or not, and ends with the report page. It is meant for the routine case, a run or a barcode of a run, and it can be started again where it stopped.
 
-It needs a GRCh37 reference genome with chromosomes 1 to 22, X and Y, with its .fai index; Illumina's manifest of the MethylationEPIC v2.0 array (EPIC-8v2-0_A2.csv); the folder of the model; and a stored copy-number reference made from a cohort sequenced the same way (see below). The tools are samtools, modkit, and, for reads that are not yet aligned, dorado or minimap2. SPARSH was tested with modkit 0.6.1 and dorado 1.3.0; the versions used are recorded, and others are pointed out.
+It needs a GRCh37 reference genome with chromosomes 1 to 22, X and Y, with its .fai index (README.md shows how to make the one the samples of the article were aligned to); Illumina's manifest of the MethylationEPIC v2.0 array (EPIC-8v2-0_A2.csv); the folder of the model; and a stored copy-number reference made from a cohort sequenced the same way (see below). The tools are samtools, modkit, and, for reads that are not yet aligned, dorado or minimap2. SPARSH was tested with modkit 0.6.1 and dorado 1.3.0; the versions used are recorded, and others are pointed out.
 
 ## Running it
 
