@@ -17,7 +17,7 @@ number of reads it holds, and adding up bases makes it worse, because long and
 short reads then carry very different weights.
 
 Counts are written at a fine resolution (100 kb by default) so that the
-calling step can add neighbouring bins together to whatever size the depth of
+calling step can add neighboring bins together to whatever size the depth of
 a sample supports, without reading the alignments again.
 """
 

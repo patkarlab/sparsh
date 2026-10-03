@@ -249,11 +249,11 @@ for needed in ("54,XX,+X,+4,+6,+10,+14,+17,+18,+21,+21[cp]", "High hyperdiploid,
     assert needed in one or needed in pages["ONT01"].read_text().replace("<wbr>", ""), f"ONT01: {needed!r} missing"
 two = check_page(pages["ONT02"])
 assert "Centre B" in two
-for needed in ("sseq[GRCh37] (7)x1,9p21.3(20000001_24000000)x0", "45,XY,-7", "Leukaemic fraction (from copy number)",
+for needed in ("sseq[GRCh37] (7)x1,9p21.3(20000001_24000000)x0", "45,XY,-7", "Leukemic fraction (from copy number)",
                "0.62", "Extent", "whole chromosome", "G1, G2, G3, G4, G5, G6 and 2 more", "Monosomy 7 or loss of 7q.",
                "one of 20 Mb when at least 22% do", "Whole-genome reads used", "1,204,311",
                "median 2,310 bases, N50 7,905", "1.94x (6.02 Gb of reads over the genome)", "Other ploidies that fit",
-               "68 chromosomes (near-triploid), baseline 3 copies, leukaemic fraction 0.90 (cost higher by 16.9)"):
+               "68 chromosomes (near-triploid), baseline 3 copies, leukemic fraction 0.90 (cost higher by 16.9)"):
     assert needed in two or needed in pages["ONT02"].read_text().replace("<wbr>", ""), f"ONT02: {needed!r} missing"
 events_head = two[two.index("Extent"):two.index("Genes of interest")]
 assert "Start" not in events_head and "IKZF1" not in two, "ONT02: module events should show neither start nor " \

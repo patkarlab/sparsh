@@ -2,7 +2,7 @@
 Calling copy number for a cohort of counted samples and writing the results.
 
 For every sample: choose the analysis bin size from its depth, divide its GC-corrected profile by the cohort
-reference (itself left out), segment, fit the leukaemic fraction and integer copy numbers, and describe the
+reference (itself left out), segment, fit the leukemic fraction and integer copy numbers, and describe the
 result (events, ISCN, karyotype line, ploidy class, flags). Written per sample, under the upper-case sample
 name that scripts/predict.py uses:
 
@@ -39,7 +39,7 @@ from .segment import segment_genome
 
 METHOD = ("Reads with a mapping quality of 20 or more were counted in genomic bins; each profile was corrected "
           "for GC content and divided by the median profile of the other samples of the cohort, segmented by "
-          "circular binary segmentation, and fitted with integer copy numbers, a leukaemic fraction and a "
+          "circular binary segmentation, and fitted with integer copy numbers, a leukemic fraction and a "
           "baseline ploidy. Balanced rearrangements and changes smaller than a few bins are not seen.")
 METHOD_PANEL = METHOD.replace("the median profile of the other samples of the cohort",
                               "the median profile of a stored reference panel of {n} samples sequenced the same way")
@@ -48,7 +48,7 @@ METHOD_PANEL = METHOD.replace("the median profile of the other samples of the co
 HYPODIPLOID = {"near-haploid", "low hypodiploid", "high hypodiploid"}
 HYPERDIPLOID = {"high hyperdiploid", "near-triploid"}
 
-CONFIRM = ("The ploidy class, the baseline and the leukaemic fraction are computed from read depth alone; confirm "
+CONFIRM = ("The ploidy class, the baseline and the leukemic fraction are computed from read depth alone; confirm "
            "them from the plots.")
 
 
@@ -59,7 +59,7 @@ def unsupported_note(alt: dict, purity_range) -> str:
     """
     name = {1: "haploid", 3: "triploid", 4: "tetraploid"}[alt["baseline"]]
     copies = {1: "one copy", 3: "three copies", 4: "four copies"}[alt["baseline"]]
-    text = (f"A {name} baseline with a leukaemic fraction of {alt['purity']:.2f} fits the depths better than the "
+    text = (f"A {name} baseline with a leukemic fraction of {alt['purity']:.2f} fits the depths better than the "
             "reading reported")
     q = alt.get("diploid_fraction")
     if purity_range is not None and q is not None and q < purity_range[0] - 0.005:
@@ -67,7 +67,7 @@ def unsupported_note(alt: dict, purity_range) -> str:
                  "the blast percentage allows")
     return (text + f". In that reading no autosome as a whole lies away from {copies}, and read depth cannot tell a "
             "genome multiplied as a whole from a diploid one, so the diploid reading is reported; changes shorter "
-            "than a chromosome are often present in only part of the leukaemic cells. A DNA index by flow cytometry "
+            "than a chromosome are often present in only part of the leukemic cells. A DNA index by flow cytometry "
             f"would show a {name} clone.")
 
 
@@ -141,7 +141,7 @@ def call_sample(sample: Sample, bins_by_size: Dict[int, Bins], references: Dict[
     result = describe(seg, fit, sample.sex, bins, log_ratio, bands, genes, build)
     close = []
     for alt in fit.alternatives:
-        # Read depth gives copy numbers only relative to each other: another baseline with another leukaemic
+        # Read depth gives copy numbers only relative to each other: another baseline with another leukemic
         # fraction can explain the same profile, and only the preferences for small changes separate them.
         # Noted, with a description, is another ploidy class that comes close, and at any cost up to
         # ALTERNATIVE one on the other side of diploidy (hypodiploid against hyperdiploid), which read depth
@@ -169,11 +169,11 @@ def call_sample(sample: Sample, bins_by_size: Dict[int, Bins], references: Dict[
         else None
     notes = list(sample.warnings)
     for alt in close:
-        decide = ("A blast percentage in the sample sheet, which limits the leukaemic fraction, would decide between "
+        decide = ("A blast percentage in the sample sheet, which limits the leukemic fraction, would decide between "
                   "them, as would a DNA index by flow cytometry or a karyotype." if purity_range is None else
                   "Both agree with the blast percentage given; a DNA index by flow cytometry or a karyotype decides.")
         notes.append(f"Read depth also fits {alt['modal_number']} chromosomes ({alt['ploidy_class']}: "
-                     f"{alt['karyotype']}) with a leukaemic fraction of {alt['purity']:.2f}, against "
+                     f"{alt['karyotype']}) with a leukemic fraction of {alt['purity']:.2f}, against "
                      f"{result['modal_number']} with {fit.purity:.2f} as reported, which needs smaller changes. "
                      + decide)
     for alt in fit.unsupported:
@@ -188,13 +188,13 @@ def call_sample(sample: Sample, bins_by_size: Dict[int, Bins], references: Dict[
         status = "noisy" if status == "ok" else status
         notes.append(f"The profile is noisy (bin-to-bin standard deviation {sigma:.2f} of log2 ratio).")
     if not fit.estimable:
-        notes.append("No change away from the baseline was found, so the leukaemic fraction cannot be "
-                     "estimated from copy number; a leukaemia without copy-number changes and a sample with few "
-                     "leukaemic cells look the same.")
+        notes.append("No change away from the baseline was found, so the leukemic fraction cannot be "
+                     "estimated from copy number; a leukemia without copy-number changes and a sample with few "
+                     "leukemic cells look the same.")
     reference = references[size]
     if isinstance(reference, FlatReference):
         status = "no reference"
-        notes.append("Called without a reference of other samples: only GC content was corrected, so artefacts of "
+        notes.append("Called without a reference of other samples: only GC content was corrected, so artifacts of "
                      "mappability and of the library may remain, and chromosome Y was not assessed. For a first "
                      "look only.")
     result.update({

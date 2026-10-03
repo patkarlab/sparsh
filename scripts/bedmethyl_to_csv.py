@@ -25,14 +25,14 @@ By default the calls of the two strands of the probe's CpG are added: the value 
 modified, 0 when fewer than half are, and the probe is left out when they are split exactly in half. A CpG is one
 site to the model and its two strands are mostly methylated alike, so this puts the reads of both strands behind
 each call. --strands forward takes the row at the probe's own base alone and writes 1 when its percentage of
-modified calls is 50 or more, 0 otherwise (the mean percentage if more than one row overlaps the probe). That is the
-matrix step of the laboratory's MethPipe pipeline (intersect_epic.py), written again without its dependence on
-bedtools; on test data the two give the same file, byte for byte (tests/test_bedmethyl.sh checks the rules).
+modified calls is 50 or more, 0 otherwise (the mean percentage if more than one row overlaps the probe).
+tests/test_bedmethyl.sh checks both rules.
 
 Columns are named by the probe identifier up to its first underscore (cg25324105 for cg25324105_BC11), in the order
 of the full identifiers, so the replicate probes of one CpG give columns with the same name; scripts/predict.py
 combines such columns (by default their mean). The row is named after --sample. A summary line gives the pileup rows
-read, the probes with a call and the mean and median methylated fraction before the calls are made.
+read and the probes with a call; by default also the probes left out as exact halves and how often the two strands
+agree, and with --strands forward the mean and median methylated fraction before the calls are made.
 
 The manifest is checked first: a file with fewer probe rows than its 'Loci Count' line declares, such as a copy cut
 short in transfer, is refused, since it would otherwise give matrices with few probes and no error. The pileup
@@ -96,7 +96,7 @@ def check_manifest(path: Path) -> None:
 
 
 def manifest_columns(path: Path):
-    """The probe, chromosome and position columns of the manifest, chosen as MethPipe chooses them."""
+    """The probe, chromosome and position columns of the manifest, chosen as described above."""
     columns = [c.strip() for c in pd.read_csv(path, header=7, nrows=0).columns]
     probe = [c for c in columns if "ilmn" in c.lower()]
     if not probe:
@@ -140,7 +140,7 @@ def first_line(path: Path) -> str:
 def read_pileup(path: Path, probes: pd.DataFrame):
     """
     The pileup rows at a probe or at the other strand of its CpG, joined to the probe: chrom, start, end, strand,
-    meth_5mc (the percentage of modified calls, cleaned as MethPipe cleans it), n_valid, n_mod, probe_id and role
+    meth_5mc (the percentage of modified calls, 0 where it is not a number), n_valid, n_mod, probe_id and role
     ('own' for the row at the probe's base, 'other' for the other strand of its CpG); and the number of rows on
     chromosomes 1 to 22, X and Y. The other strand is the minus-strand row one base after a probe on the C, or the
     plus-strand row one base before a probe on the G; a CpG cannot have both.
@@ -188,7 +188,7 @@ def read_pileup(path: Path, probes: pd.DataFrame):
 
 
 def forward_calls(overlap: pd.DataFrame) -> pd.Series:
-    """MethPipe's calls: the mean percentage of the rows at the probe's base, 1 from 50 up, by full identifier."""
+    """Forward-strand calls: the mean percentage of the rows at the probe's base, by full identifier."""
     own = overlap[overlap["role"] == "own"]
     return own.groupby("probe_id")["meth_5mc"].mean()
 
@@ -234,7 +234,7 @@ def main() -> int:
     ap.add_argument("--out", required=True, help="CSV to write")
     ap.add_argument("--strands", choices=["both", "forward"], default="both",
                     help="both: the calls of both strands of each CpG added (default); forward: the forward strand "
-                         "alone, as MethPipe's intersect_epic.py")
+                         "alone")
     args = ap.parse_args()
 
     out = Path(args.out)

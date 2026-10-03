@@ -2,7 +2,7 @@
 """
 How a model calls training arrays of classes it was NOT trained on.
 
-    python scripts/score_excluded.py --run runs/v04_labels
+    python scripts/score_excluded.py --run runs/my_model
 
 A class left out of training (for example AML-MR and AML_MECOM-r) does not leave
 the clinic: such patients are still sequenced, and the model must call them

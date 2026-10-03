@@ -3,7 +3,7 @@ r"""
 Write a new training pickle with per-sample label changes, leaving the input untouched.
 
     python scripts/make_training_pickle.py \
-        --data_path /path/arrays.pkl --output /path/arrays_relabelled.pkl \
+        --data_path /path/arrays.pkl --output /path/arrays_relabeled.pkl \
         --relabel corrections_a.csv corrections_b.csv
 
 Each --relabel CSV has the columns Sample_ID and new_label, and optionally reason.
@@ -93,7 +93,7 @@ def main():
 
     unknown = sorted(set(rel[SAMPLE]) - set(where.index))
     if unknown:
-        sys.exit(f"{len(unknown)} relabelled Sample_ID(s) are not in the pickle, e.g. {unknown[:10]}")
+        sys.exit(f"{len(unknown)} relabeled Sample_ID(s) are not in the pickle, e.g. {unknown[:10]}")
     unknown_drops = sorted(drops - set(where.index))
     if unknown_drops:
         print(f"Note: {len(unknown_drops)} Sample_ID(s) to drop are not in the pickle, e.g. {unknown_drops[:5]}")

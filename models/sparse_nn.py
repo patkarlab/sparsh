@@ -12,7 +12,7 @@ midpoint : missing -> 0.5 (the default of scripts/train.py). The first-layer
            signal grows with the number of observed CpGs, which is harmless as
            long as training covers the whole coverage range seen at inference
            (coverage_mode "random").
-scaled   : centre observed values at 0.5 (x - 0.5), set missing CpGs to 0 and
+scaled   : center observed values at 0.5 (x - 0.5), set missing CpGs to 0 and
            divide by the sample's observed fraction (the inverted-dropout rule),
            so the expected first-layer input is the same at every coverage. The
            released model uses this encoding.

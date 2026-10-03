@@ -25,7 +25,7 @@ Inputs
                      Its config.json, cv_metrics_by_condition.csv and cv_recall_by_class.csv give the model details
                      and the evidence from cross-validation; without them that section is left out.
   --interpretation   text per class, family and lineage (default configs/interpretation.json; see that file).
-  --sample_sheet     CSV with a column 'sample' and any other columns (for example centre, sample_type,
+  --sample_sheet     CSV with a column 'sample' and any other columns (for example center, sample_type,
                      blast_percent, collection_date), shown as sample information. Names are matched as predict.py
                      names samples: stripped and upper-cased. Do not put names of patients in it.
   --karyotype_dir    folder of <SAMPLE>.karyotype.json files from the copy-number module, each optionally with
@@ -33,7 +33,7 @@ Inputs
   --threshold        reporting threshold (default: the prediction run's, else 0.90). Another value recomputes the
                      reported calls from the class probabilities (see report/inputs.py).
 
-Class names are shown as in predictions.csv (configs/display_names.json); colours come from
+Class names are shown as in predictions.csv (configs/display_names.json); colors come from
 configs/class_colours.json. The reports are for research use only and say so on every page.
 """
 

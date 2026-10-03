@@ -1,14 +1,17 @@
 cff-version: 1.2.0
-message: "If you use SPARSH, please cite the article that describes it. Until it is published, please cite this repository."
-title: "SPARSH: Subtype Prediction via Adaptive Recognition from Sparse Haematological data"
+message: "If you use SPARSH, please cite the article that describes it. Until it is published, please cite this software."
+title: "SPARSH: Subtype Prediction via Adaptive Recognition from Sparse Hematological data"
+abstract: "SPARSH uses a neural network trained on Illumina methylation arrays to classify acute leukemia from the sparse CpG methylation calls of a low-pass nanopore genome run. From the same reads it estimates copy number along the genome and writes it as a karyotype, and it puts both into a report for each case."
 type: software
 authors:
-  - name: "The SPARSH Authors"
+  - name: "ACTREC, Tata Memorial Centre"
+    city: "Navi Mumbai"
+    country: IN
 version: 1.0.0
 license: MIT
 repository-code: "https://github.com/patkarlab/sparsh"
 keywords:
-  - acute leukaemia
+  - acute leukemia
   - DNA methylation
   - nanopore sequencing
   - classification

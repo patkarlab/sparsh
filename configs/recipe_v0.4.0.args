@@ -21,7 +21,7 @@
 --cov_max 0.95
 --input_encoding scaled
 
-# dilution: each leukaemia array mixed with a normal marrow at 20-100% blasts half of the times it is drawn, the
+# dilution: each leukemia array mixed with a normal marrow at 20-100% blasts half of the times it is drawn, the
 # inner validation alike
 --dilution_prob 0.5
 --blast_min 0.2

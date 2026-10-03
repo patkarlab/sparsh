@@ -1,5 +1,5 @@
 #!/bin/bash
-# Preparing training data on synthetic arrays: a relabelled pickle with a class renamed
+# Preparing training data on synthetic arrays: a relabeled pickle with a class renamed
 # (scripts/make_training_pickle.py) and its refusals, merged cross-validation groups (scripts/merge_groups.py),
 # training on the new pickle, and the label audit (scripts/label_audit.py) with and without a run. CPU only, about
 # a minute, writes only to a temporary folder that is deleted afterwards. Run from the repository folder:

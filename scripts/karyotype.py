@@ -29,7 +29,7 @@ The work is split into steps so that the alignments are read only once:
   reference rebuild the GC table of the 100 kb bins from a reference FASTA
             (the tables for hg19 and hg38 are shipped in karyotype/data).
 
-Counting one sample, streaming its BAM from the archive:
+Counting one sample, streaming its BAM file from an S3 object store:
 
     aws s3 cp s3://bucket/run/SAMPLE.bam - | samtools view -F 0x904 -q 20 - | cut -f 2-6 \\
         | python scripts/karyotype.py count --sample SAMPLE --build hg19 --out_dir counts \\
@@ -40,7 +40,7 @@ jobs/karyotype_count.sh does this for every sample of a manifest. Then, once all
     python scripts/karyotype.py call --counts_dir counts --out_dir copy_number --sample_sheet samples.csv
 
 The sample sheet is optional: a CSV with a column 'sample' and, when known, 'sex' (F or M) and
-'blast_percent' (0 to 100), which limits the leukaemic fraction to within 20 points of it.
+'blast_percent' (above 0, up to 100), which limits the leukemic fraction to within 20 points of it.
 """
 
 import argparse

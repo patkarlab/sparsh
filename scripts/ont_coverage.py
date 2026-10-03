@@ -2,7 +2,7 @@
 """
 How much of a model's CpG set each nanopore sample covers, checked before prediction.
 
-    python scripts/ont_coverage.py --run runs/v04_labels /path/to/ont_folder [more folders or CSV files]
+    python scripts/ont_coverage.py --run /path/to/sparsh_model_0.4.0 /path/to/ont_folder [more folders or CSV files]
 
 Every CSV directly inside each folder (the files scripts/predict.py --ont_dir reads)
 goes through the same loader as prediction (data/ont.py). For each folder it prints:

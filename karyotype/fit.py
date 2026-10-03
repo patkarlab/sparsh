@@ -1,12 +1,12 @@
 """
-Tumour fraction, baseline ploidy and integer copy numbers from segment means.
+Tumor fraction, baseline ploidy and integer copy numbers from segment means.
 
-After normalisation the median autosomal bin sits near a log ratio of 0. If a
-fraction p of the cells are leukaemic, the median bin has m copies in those
-cells (m is 2 for most leukaemias, 1 for a near-haploid clone, 3 or 4 for
+After normalization the median autosomal bin sits near a log ratio of 0. If a
+fraction p of the cells are leukemic, the median bin has m copies in those
+cells (m is 2 for most leukemias, 1 for a near-haploid clone, 3 or 4 for
 near-triploid or near-tetraploid ones) and the normal cells carry their
 constitutional copies n (2 for autosomes; for the sex chromosomes it depends
-on sex), a segment with c copies in every leukaemic cell is expected at
+on sex), a segment with c copies in every leukemic cell is expected at
 
     log2( (p*c + (1 - p)*n) / (p*m + 2*(1 - p)) ) + d
 
@@ -15,8 +15,8 @@ genome is gained, the median bin is no longer exactly at the level of m copies.
 
 Every combination of p (0.10 to 1.00) and m (1 to 4) is tried, with d fitted
 for each. Each segment is explained either by an integer copy number in all
-leukaemic cells, or, at a fixed cost, by a one-copy change in part of the
-cells (a subclone, or an artefact of a short segment). The cost of a
+leukemic cells, or, at a fixed cost, by a one-copy change in part of the
+cells (a subclone, or an artifact of a short segment). The cost of a
 combination is the sum over segments of the squared error in standard errors,
 plus a fixed cost for every segment two or more copies away from the baseline
 of its chromosome, the constitutional number scaled to the ploidy of the clone
@@ -32,11 +32,11 @@ copies then makes the fit prefer, among fractions that explain the profile
 equally well, the one that needs the smallest changes, and among solutions
 whose costs differ by less than 2 the one whose segments lie closest to the
 baseline is taken. No single segment adds more than 25 to the cost (five
-standard errors), so one segment that fits no solution, often an artefact,
+standard errors), so one segment that fits no solution, often an artifact,
 cannot decide the fit on its own. The autosomes decide the fit whenever they carry a change;
-the sex chromosomes, more prone to artefacts, are then assigned with it. Read depth alone cannot
+the sex chromosomes, more prone to artifacts, are then assigned with it. Read depth alone cannot
 always separate solutions: a near-haploid clone and the same clone doubled
-give the same profile, and a small leukaemic fraction with large changes can
+give the same profile, and a small leukemic fraction with large changes can
 mimic a large one with small changes. The best cost for every baseline is
 therefore kept and reported, and a blast percentage from the sample sheet
 limits the fraction when it is known.
@@ -47,7 +47,7 @@ chromosomes that differ from it: a genome multiplied as a whole looks like a dip
 baseline with a fraction p puts every level where a diploid one with the fraction 2p / (p + 2) does. Without
 the rule, a profile with shorter changes only, present in fewer cells than the blast percentage allows, would
 be moved to a triploid or tetraploid baseline merely to reach an allowed fraction, although such changes are
-often present in part of the leukaemic cells. The best reading turned down this way is kept when it costs less
+often present in part of the leukemic cells. The best reading turned down this way is kept when it costs less
 than the diploid one taken, so that it can be named.
 """
 
@@ -96,7 +96,7 @@ class Fit:
 
 
 def diploid_fraction(p: float, m: int) -> float:
-    """The leukaemic fraction at which a diploid baseline puts every level where baseline m with fraction p does."""
+    """The leukemic fraction at which a diploid baseline puts every level where baseline m with fraction p does."""
     return 2.0 * p / (p * m + 2.0 * (1.0 - p))
 
 
@@ -125,7 +125,7 @@ def _explain(means, se2, normals, nbins, p, m, d, max_cn):
     best = np.where(quiet, np.searchsorted(cands, normals.astype(int)), best)
     copies = cands[best]
     # a segment two or more copies away from the baseline costs EXTRA_COPY once, however high the level (so an
-    # amplification does not push the fit towards a halved baseline). The baseline of a chromosome is its
+    # amplification does not push the fit toward a halved baseline). The baseline of a chromosome is its
     # constitutional number scaled to the ploidy of the clone, so that in a near-triploid or high hyperdiploid
     # reading a tetrasomy is one step from the baseline, as a trisomy is in a diploid one.
     extra = (np.abs(copies - normals * m / 2.0) >= 2) * EXTRA_COPY
@@ -145,7 +145,7 @@ def fit_segments(seg: pd.DataFrame, sex: str, sigma: float, max_cn: int = 8,
     """
     seg: segments with chrom, n_bins, mean and (optionally) sigma, the per-bin noise of their chromosome;
     sigma: per-bin noise used where the segments do not carry their own.
-    purity_range: (low, high) limits on the leukaemic fraction, for example from the blast percentage.
+    purity_range: (low, high) limits on the leukemic fraction, for example from the blast percentage.
     """
     means = seg["mean"].to_numpy(dtype=float)
     nbins = seg["n_bins"].to_numpy(dtype=float)
@@ -161,7 +161,7 @@ def fit_segments(seg: pd.DataFrame, sex: str, sigma: float, max_cn: int = 8,
     base = expected_log2(normals, normals, 1.0, 2)
     z = np.abs(means - base) / np.sqrt(se2)
     changed = use & (z > 4.0)
-    # the autosomes decide the clone; the sex chromosomes, more prone to artefacts, only when they alone change
+    # the autosomes decide the clone; the sex chromosomes, more prone to artifacts, only when they alone change
     if (changed & auto).any():
         use = use & auto
     if not changed.any():
@@ -226,7 +226,7 @@ def fit_segments(seg: pd.DataFrame, sex: str, sigma: float, max_cn: int = 8,
 
 def explain_all(seg: pd.DataFrame, sex: str, sigma: float, p: float, m: int, d: float, max_cn: int = 8,
                 score: float = float("nan"), alternatives: Optional[List[Dict]] = None) -> Fit:
-    """Copy number of every segment, short ones included, at the leukaemic fraction p, baseline m and offset d."""
+    """Copy number of every segment, short ones included, at the leukemic fraction p, baseline m and offset d."""
     means = seg["mean"].to_numpy(dtype=float)
     nbins = seg["n_bins"].to_numpy(dtype=float)
     normals = np.array([normal_copies(c, sex) for c in seg["chrom"]], dtype=float)

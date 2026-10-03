@@ -1,8 +1,8 @@
 """
 Style sheets of the report pages, written into each page so that it needs no other file.
 
-A sober layout: the system font stack, dark text on white, one accent colour (a dark blue, for headings and rules),
-and colour otherwise only in the class and lineage chips and in the bars of the chart. The print style sheet sets
+A sober layout: the system font stack, dark text on white, one accent color (a dark blue, for headings and rules),
+and color otherwise only in the class and lineage chips and in the bars of the chart. The print style sheet sets
 A4 pages with 15 mm margins, keeps the result panel, the chart and tables on one page where they fit, and, in
 browsers that support page-margin boxes, prints the sample name, the research-use statement and the page number at
 the foot of every page. The footer line at the end of a page is left out of print, because the header already

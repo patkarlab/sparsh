@@ -1,5 +1,6 @@
-# Shared job setup, sourced by every batch job after jobs/settings.sh: loads the CUDA module when one is set,
-# activates the conda environment, defines require_file and sets the variables that make runs repeatable.
+# Shared job setup, sourced after jobs/settings.sh by every batch job except the copy-number jobs (which take their
+# settings from qsub -v): loads the CUDA module when one is set, activates the conda environment, defines
+# require_file and sets the variables that make runs repeatable.
 
 require_file() {  # usage: require_file NAME PATH [HINT]
     if [ ! -f "$2" ]; then

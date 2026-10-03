@@ -10,7 +10,7 @@ CpGs is covered: reads_* (the methylated fraction of the reads at each CpG),
 binary_* (one 0/1 call per CpG from its reads) and oneread_* (the call of a
 single read). Runs scored with per-read call errors (--eval_call_errors) add
 rows such as binary-err10_* (10% of read calls wrong), and runs scored with
-dilution (--eval_blasts) rows such as binary-blast30_* (leukaemia samples at 30%
+dilution (--eval_blasts) rows such as binary-blast30_* (leukemia samples at 30%
 blasts). --all_conditions adds the dense array profile and the mask_*
 conditions (array beta values at the covered CpGs), which no nanopore run
 produces. For each simulation (and call error), a row gives the mean over its coverages, and

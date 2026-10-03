@@ -114,7 +114,7 @@ def load_bin_table(build: str) -> pd.DataFrame:
 
 
 GENES_OF_INTEREST = [
-    # B-ALL and T-ALL deletions, and genes named in acute leukaemia cytogenetics
+    # B-ALL and T-ALL deletions, and genes named in acute leukemia cytogenetics
     "CDKN2A", "CDKN2B", "MTAP", "IKZF1", "PAX5", "ETV6", "RB1", "EBF1", "BTG1", "ERG", "RUNX1", "KMT2A",
     "TP53", "NF1", "PTEN", "LEF1", "CREBBP", "NR3C1", "TBL1XR1", "VPREB1", "CRLF2", "P2RY8", "SH2B3",
     "IKZF2", "IKZF3", "ZNF384", "MYC", "MYB", "NOTCH1", "FBXW7", "LMO2", "TAL1", "STIL", "BCL11B",

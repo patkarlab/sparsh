@@ -4,12 +4,12 @@ Inputs of the per-case reports: what scripts/predict.py wrote, and what the repo
 load_inputs() reads the output folder of scripts/predict.py (predictions.csv, and prediction_info.json,
 display_names_used.json and class_hierarchy_used.json when present), the model folder named there or on the
 command line (config.json, class_mapping.json and the cross-validation tables, all optional), the interpretation
-text, the class colours, an optional sample sheet and an optional folder of copy-number karyotypes. It checks
+text, the class colors, an optional sample sheet and an optional folder of copy-number karyotypes. It checks
 them and returns one Context, shared by all pages, and one Case per sample.
 
 Class names. predictions.csv shows the names of configs/display_names.json (for example T-ALL_HOXA_ETP for the
 internal class T-ALL_HOXA9_ETP). Everything here is looked up by internal name, as in the model folder, the class
-hierarchy, the colours and the interpretation text; evaluation/display.py maps between the two, and the pages
+hierarchy, the colors and the interpretation text; evaluation/display.py maps between the two, and the pages
 show the shown names again.
 
 Threshold. The report uses the threshold of the prediction run (from prediction_info.json; for a prediction folder
@@ -133,7 +133,7 @@ class Case:
 
 @dataclass
 class Context:
-    """Everything the pages share: names, hierarchy, threshold, colours, interpretation text, model and sources."""
+    """Everything the pages share: names, hierarchy, threshold, colors, interpretation text, model and sources."""
     title: str
     generated: datetime
     predictions_dir: Path
@@ -163,11 +163,11 @@ class Context:
         return show(cls, self.display)
 
     def colour(self, cls: str) -> str:
-        """Colour of a class (internal name), as fitted by load_colours."""
+        """Color of a class (internal name), as fitted by load_colours."""
         return self.colours.get(cls, GREY)
 
     def lineage_colour(self, lineage: str) -> str:
-        """Colour of a lineage; 'Other' in the colour file, else grey, for a lineage without one."""
+        """Color of a lineage; 'Other' in the color file, else gray, for a lineage without one."""
         return self.lineage_colours.get(lineage, self.lineage_colours.get("Other", GREY))
 
     def class_index(self, cls: str) -> int:
@@ -212,7 +212,7 @@ def _label(column: str) -> str:
 
 # ---------------------------------------------------------------------------------------------- predictions
 def read_predictions(path: Path) -> pd.DataFrame:
-    """predictions.csv as written by scripts/predict.py, with numbers and flags converted and names normalised."""
+    """predictions.csv as written by scripts/predict.py, with numbers and flags converted and names normalized."""
     df = _read_csv_as_text(path, "predictions")
     missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
     if missing:
@@ -308,25 +308,25 @@ def resolve_classes(shown_names: Sequence[str], info: dict, predictions_dir: Pat
 # ---------------------------------------------------------------------------------------------- other inputs
 def load_colours(classes: Sequence[str], h: Hierarchy) -> Tuple[Dict[str, str], Dict[str, str]]:
     """
-    Colour of every model class (its own colour in configs/class_colours.json, else its lineage's, else grey)
-    and the lineage colours. Colours must be written as #rgb or #rrggbb; others are ignored with a warning.
+    Color of every model class (its own color in configs/class_colours.json, else its lineage's, else gray)
+    and the lineage colors. Colors must be written as #rgb or #rrggbb; others are ignored with a warning.
     """
     content = {}
     if COLOURS_FILE.exists():
-        content = _read_json(COLOURS_FILE, "class colours")
+        content = _read_json(COLOURS_FILE, "class colors")
     else:
-        warn(f"{COLOURS_FILE} not found; every class is drawn in grey")
+        warn(f"{COLOURS_FILE} not found; every class is drawn in gray")
 
     def valid(part: str) -> Dict[str, str]:
         out = {}
         entries = content.get(part, {}) if isinstance(content, dict) else {}
         if not isinstance(entries, dict):
-            raise ReportInputError(f"{COLOURS_FILE}: '{part}' must map names to colours")
+            raise ReportInputError(f"{COLOURS_FILE}: '{part}' must map names to colors")
         for name, value in entries.items():
             if isinstance(value, str) and COLOUR.match(value.strip()):
                 out[str(name)] = value.strip()
             else:
-                warn(f"{COLOURS_FILE}: colour {value!r} of {name!r} is not written as #rrggbb; ignored")
+                warn(f"{COLOURS_FILE}: color {value!r} of {name!r} is not written as #rrggbb; ignored")
         return out
 
     lineage_colours, class_colours = valid("lineages"), valid("classes")
@@ -341,10 +341,10 @@ def load_colours(classes: Sequence[str], h: Hierarchy) -> Tuple[Dict[str, str], 
             colours[c] = lineage_colours.get("Other", GREY)
             grey.append(c)
     if by_lineage:
-        print(f"Classes drawn in the colour of their lineage (no colour of their own in {COLOURS_FILE.name}): "
+        print(f"Classes drawn in the color of their lineage (no color of their own in {COLOURS_FILE.name}): "
               + ", ".join(by_lineage))
     if grey:
-        warn(f"no colour for the classes {grey} in {COLOURS_FILE}, nor for their lineages; they are drawn in grey. "
+        warn(f"no color for the classes {grey} in {COLOURS_FILE}, nor for their lineages; they are drawn in gray. "
              "Add them to 'classes', or their lineage to 'lineages'")
     return colours, lineage_colours
 
@@ -415,7 +415,7 @@ def read_sample_sheet(path: Path, predicted: Sequence[str]) -> Dict[str, List[Tu
     """
     Sample information by sample: every column of the sheet except 'sample', as (label, value) pairs, empty
     values left out. Names are matched as predict.py names samples (stripped, upper case). A sheet row whose
-    sample was not predicted is an error, because it usually means that a name is spelt differently.
+    sample was not predicted is an error, because it usually means that a name is spelled differently.
     """
     path = Path(path)
     if not path.exists():

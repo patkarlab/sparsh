@@ -1,244 +1,244 @@
 {
-  "description": "Text shown in the per-case reports of scripts/report.py. Keys of 'classes' are the internal class names of the model (as in the training data and the model folder, not the names shown through configs/display_names.json). Keys of 'families' are the family names of configs/class_hierarchy.json, and keys of 'lineages' and of 'not_in_model' are its lineage names. In a class entry only 'name' and 'summary' are required: 'confirm' is the recommended confirmation, 'note' a point to keep in mind, and 'copy_number_note' is shown next to the copy-number karyotype. A family entry may have its own 'name'. 'levels' holds the text for a sample that is not classified, and 'not_in_model' lists, by lineage, entities the model does not contain. The text was written for model version 0.4.0. It is marked as a draft until a haematopathologist has reviewed it, and every report then says so.",
+  "description": "Text shown in the per-case reports of scripts/report.py. Keys of 'classes' are the internal class names of the model (as in the training data and the model folder, not the names shown through configs/display_names.json). Keys of 'families' are the family names of configs/class_hierarchy.json, and keys of 'lineages' and of 'not_in_model' are its lineage names. In a class entry only 'name' and 'summary' are required: 'confirm' is the recommended confirmation, 'note' a point to keep in mind, and 'copy_number_note' is shown next to the copy-number karyotype. A family entry may have its own 'name'. 'levels' holds the text for a sample that is not classified, and 'not_in_model' lists, by lineage, entities the model does not contain. The text was written for model version 0.4.0. It is marked as a draft until a hematopathologist has reviewed it, and every report then says so.",
   "version": "draft, 30 September 2026",
   "classes": {
     "APL_PML-RARA": {
-      "name": "Acute promyelocytic leukaemia with PML::RARA fusion",
-      "summary": "The methylation profile matches acute promyelocytic leukaemia with the PML::RARA fusion.",
-      "confirm": "Confirm PML::RARA urgently by fluorescence in situ hybridisation or reverse-transcription polymerase chain reaction.",
-      "note": "Acute promyelocytic leukaemia is a medical emergency because of its bleeding risk. When it is suspected, treatment with all-trans retinoic acid should not wait for genetic confirmation.",
+      "name": "Acute promyelocytic leukemia with PML::RARA fusion",
+      "summary": "The methylation profile matches acute promyelocytic leukemia with the PML::RARA fusion.",
+      "confirm": "Confirm PML::RARA urgently by fluorescence in situ hybridization or reverse-transcription polymerase chain reaction.",
+      "note": "Acute promyelocytic leukemia is a medical emergency because of its bleeding risk. When it is suspected, treatment with all-trans retinoic acid should not wait for genetic confirmation.",
       "copy_number_note": "The t(15;17)(q24.1;q21.2) that forms PML::RARA is balanced and does not change copy number. Trisomy 8 is the most common additional change."
     },
     "AML_RUNX1-RUNX1T1": {
-      "name": "Acute myeloid leukaemia with RUNX1::RUNX1T1 fusion",
-      "summary": "The methylation profile matches acute myeloid leukaemia with the RUNX1::RUNX1T1 fusion, one of the core-binding factor leukaemias.",
-      "confirm": "Confirm RUNX1::RUNX1T1 by fluorescence in situ hybridisation or reverse-transcription polymerase chain reaction. A quantitative assay also provides the baseline for monitoring measurable residual disease.",
+      "name": "Acute myeloid leukemia with RUNX1::RUNX1T1 fusion",
+      "summary": "The methylation profile matches acute myeloid leukemia with the RUNX1::RUNX1T1 fusion, one of the core-binding factor leukemias.",
+      "confirm": "Confirm RUNX1::RUNX1T1 by fluorescence in situ hybridization or reverse-transcription polymerase chain reaction. A quantitative assay also provides the baseline for monitoring measurable residual disease.",
       "copy_number_note": "The t(8;21)(q22;q22.1) is balanced and does not change copy number. Loss of a sex chromosome and deletion of 9q are common additional changes that the profile can show."
     },
     "AML_CBFB-MYH11": {
-      "name": "Acute myeloid leukaemia with CBFB::MYH11 fusion",
-      "summary": "The methylation profile matches acute myeloid leukaemia with the CBFB::MYH11 fusion, one of the core-binding factor leukaemias.",
-      "confirm": "Confirm CBFB::MYH11 by fluorescence in situ hybridisation or reverse-transcription polymerase chain reaction; the inversion can be missed on a conventional karyotype. A quantitative assay also provides the baseline for monitoring measurable residual disease.",
+      "name": "Acute myeloid leukemia with CBFB::MYH11 fusion",
+      "summary": "The methylation profile matches acute myeloid leukemia with the CBFB::MYH11 fusion, one of the core-binding factor leukemias.",
+      "confirm": "Confirm CBFB::MYH11 by fluorescence in situ hybridization or reverse-transcription polymerase chain reaction; the inversion can be missed on a conventional karyotype. A quantitative assay also provides the baseline for monitoring measurable residual disease.",
       "copy_number_note": "The inv(16)(p13.1q22) or t(16;16)(p13.1;q22) is balanced and does not change copy number. Trisomy 22 and trisomy 8 are common additional changes."
     },
     "AML_mutated CEBPA": {
-      "name": "Acute myeloid leukaemia with CEBPA mutation",
-      "summary": "The methylation profile matches acute myeloid leukaemia with CEBPA mutation.",
+      "name": "Acute myeloid leukemia with CEBPA mutation",
+      "summary": "The methylation profile matches acute myeloid leukemia with CEBPA mutation.",
       "confirm": "Sequence the whole CEBPA gene. The defining mutations are biallelic, or a single in-frame mutation of the basic leucine zipper region.",
       "note": "Some CEBPA mutations, usually in the N-terminal part of the gene, are inherited, so germline testing is worth considering when one is found.",
       "copy_number_note": "The karyotype is usually normal, and no copy-number change is characteristic."
     },
     "AML_HOXdys_NPM1_NUP98_DEK-NUP214_UBTF": {
-      "name": "Acute myeloid leukaemia with HOX-related methylation (NPM1 mutation, NUP98 rearrangement, DEK::NUP214 or UBTF tandem duplication)",
-      "summary": "The methylation profile matches the combined class of acute myeloid leukaemia with activation of the HOX genes, which holds leukaemias with NPM1 mutation, NUP98 rearrangement, DEK::NUP214 fusion or UBTF tandem duplication.",
-      "confirm": "Test for NPM1 mutation by polymerase chain reaction or sequencing. If it is absent, test for NUP98 rearrangements and DEK::NUP214 by fluorescence in situ hybridisation, reverse-transcription polymerase chain reaction or RNA sequencing, and for UBTF tandem duplication by polymerase chain reaction or sequencing.",
-      "note": "The methylation profile does not separate these genetic groups, so the lesion has to be found by other tests. The profile overlaps with that of acute myeloid leukaemia with KMT2A rearrangement, and leukaemias with a partial tandem duplication of KMT2A, which is not a class of the model, have a similar profile. This result does not exclude an IDH1 or IDH2 mutation.",
+      "name": "Acute myeloid leukemia with HOX-related methylation (NPM1 mutation, NUP98 rearrangement, DEK::NUP214 or UBTF tandem duplication)",
+      "summary": "The methylation profile matches the combined class of acute myeloid leukemia with activation of the HOX genes, which holds leukemias with NPM1 mutation, NUP98 rearrangement, DEK::NUP214 fusion or UBTF tandem duplication.",
+      "confirm": "Test for NPM1 mutation by polymerase chain reaction or sequencing. If it is absent, test for NUP98 rearrangements and DEK::NUP214 by fluorescence in situ hybridization, reverse-transcription polymerase chain reaction or RNA sequencing, and for UBTF tandem duplication by polymerase chain reaction or sequencing.",
+      "note": "The methylation profile does not separate these genetic groups, so the lesion has to be found by other tests. The profile overlaps with that of acute myeloid leukemia with KMT2A rearrangement, and leukemias with a partial tandem duplication of KMT2A, which is not a class of the model, have a similar profile. This result does not exclude an IDH1 or IDH2 mutation.",
       "copy_number_note": "None of the defining lesions changes copy number, and the karyotype is often normal."
     },
     "AML_NPM1_IDH": {
-      "name": "Acute myeloid leukaemia with NPM1 mutation and IDH1 or IDH2 mutation",
-      "summary": "The methylation profile matches acute myeloid leukaemia with both an NPM1 mutation and an IDH1 or IDH2 mutation.",
+      "name": "Acute myeloid leukemia with NPM1 mutation and IDH1 or IDH2 mutation",
+      "summary": "The methylation profile matches acute myeloid leukemia with both an NPM1 mutation and an IDH1 or IDH2 mutation.",
       "confirm": "Test for NPM1 mutation, and for IDH1 and IDH2 mutations, by polymerase chain reaction or sequencing.",
-      "note": "The class is defined by genotype. Only part of the leukaemias with both mutations have this profile; others have the HOX-related profile, so IDH1 and IDH2 should be tested whatever the class.",
+      "note": "The class is defined by genotype. Only part of the leukemias with both mutations have this profile; others have the HOX-related profile, so IDH1 and IDH2 should be tested whatever the class.",
       "copy_number_note": "The karyotype is usually normal, and no copy-number change is characteristic."
     },
     "AML_IDH": {
-      "name": "Acute myeloid leukaemia with IDH1 or IDH2 mutation",
-      "summary": "The methylation profile matches acute myeloid leukaemia with an IDH1 or IDH2 mutation, which causes a distinctive pattern of increased methylation.",
+      "name": "Acute myeloid leukemia with IDH1 or IDH2 mutation",
+      "summary": "The methylation profile matches acute myeloid leukemia with an IDH1 or IDH2 mutation, which causes a distinctive pattern of increased methylation.",
       "confirm": "Test for IDH1 and IDH2 mutations by polymerase chain reaction or sequencing.",
-      "note": "IDH-mutated acute myeloid leukaemia is not an entity of its own in the World Health Organization or International Consensus classifications, and the leukaemia may also belong to an entity defined by another lesion, such as acute myeloid leukaemia with myelodysplasia-related changes. Leukaemias with TET2 or WT1 mutations can share part of this methylation pattern.",
-      "copy_number_note": "No copy-number change is characteristic. Losses that count towards myelodysplasia-related changes, such as of 5q or 7q, are flagged in this section when present."
+      "note": "IDH-mutated acute myeloid leukemia is not an entity of its own in the World Health Organization or International Consensus classifications, and the leukemia may also belong to an entity defined by another lesion, such as acute myeloid leukemia with myelodysplasia-related changes. Leukemias with TET2 or WT1 mutations can share part of this methylation pattern.",
+      "copy_number_note": "No copy-number change is characteristic. Losses that count toward myelodysplasia-related changes, such as of 5q or 7q, are flagged in this section when present."
     },
     "AML_KMT2A-r": {
-      "name": "Acute myeloid leukaemia with KMT2A rearrangement",
-      "summary": "The methylation profile matches acute myeloid leukaemia with KMT2A rearrangement.",
-      "confirm": "Confirm the rearrangement by fluorescence in situ hybridisation with a KMT2A break-apart probe, and identify the partner gene by reverse-transcription polymerase chain reaction or RNA sequencing; the partner affects the assignment of risk.",
-      "note": "The methylation profile overlaps with that of HOX-related acute myeloid leukaemia, including NPM1-mutated leukaemia. When neither class reaches the threshold on its own, the two are reported together as a family.",
+      "name": "Acute myeloid leukemia with KMT2A rearrangement",
+      "summary": "The methylation profile matches acute myeloid leukemia with KMT2A rearrangement.",
+      "confirm": "Confirm the rearrangement by fluorescence in situ hybridization with a KMT2A break-apart probe, and identify the partner gene by reverse-transcription polymerase chain reaction or RNA sequencing; the partner affects the assignment of risk.",
+      "note": "The methylation profile overlaps with that of HOX-related acute myeloid leukemia, including NPM1-mutated leukemia. When neither class reaches the threshold on its own, the two are reported together as a family.",
       "copy_number_note": "A balanced KMT2A rearrangement does not change copy number. Trisomy 8 is a common additional change."
     },
     "AML_NUP98-NSD1": {
-      "name": "Acute myeloid leukaemia with NUP98::NSD1 fusion",
-      "summary": "The methylation profile matches acute myeloid leukaemia with the NUP98::NSD1 fusion.",
-      "confirm": "Confirm NUP98::NSD1 by reverse-transcription polymerase chain reaction, RNA sequencing or fluorescence in situ hybridisation; the translocation is not visible on a conventional karyotype. An internal tandem duplication of FLT3 often accompanies it.",
-      "note": "The methylation profile is close to that of HOX-related acute myeloid leukaemia. When neither class reaches the threshold on its own, the two are reported together as a family.",
+      "name": "Acute myeloid leukemia with NUP98::NSD1 fusion",
+      "summary": "The methylation profile matches acute myeloid leukemia with the NUP98::NSD1 fusion.",
+      "confirm": "Confirm NUP98::NSD1 by reverse-transcription polymerase chain reaction, RNA sequencing or fluorescence in situ hybridization; the translocation is not visible on a conventional karyotype. An internal tandem duplication of FLT3 often accompanies it.",
+      "note": "The methylation profile is close to that of HOX-related acute myeloid leukemia. When neither class reaches the threshold on its own, the two are reported together as a family.",
       "copy_number_note": "The t(5;11)(q35.3;p15.4) is cryptic and balanced, and does not change copy number."
     },
     "AML_ETV6-r": {
-      "name": "Acute myeloid leukaemia with ETV6 rearrangement",
-      "summary": "The methylation profile matches acute myeloid leukaemia with an ETV6 rearrangement, a small class with several partner genes, among them MNX1.",
-      "confirm": "Confirm the rearrangement by fluorescence in situ hybridisation with an ETV6 break-apart probe, and identify the partner gene by RNA sequencing.",
+      "name": "Acute myeloid leukemia with ETV6 rearrangement",
+      "summary": "The methylation profile matches acute myeloid leukemia with an ETV6 rearrangement, a small class with several partner genes, among them MNX1.",
+      "confirm": "Confirm the rearrangement by fluorescence in situ hybridization with an ETV6 break-apart probe, and identify the partner gene by RNA sequencing.",
       "note": "ETV6::MNX1, from t(7;12)(q36.3;p13.2), occurs mainly in infants.",
       "copy_number_note": "Trisomy 19 often accompanies ETV6::MNX1. Most ETV6 rearrangements are balanced, but some come with a deletion at 12p13.2."
     },
     "AML_FET-ETS": {
-      "name": "Acute myeloid leukaemia with a FET::ETS fusion",
-      "summary": "The methylation profile matches acute myeloid leukaemia with a fusion between a gene of the FET family, such as FUS, and a gene of the ETS family, such as ERG.",
-      "confirm": "Confirm the fusion by reverse-transcription polymerase chain reaction, RNA sequencing or fluorescence in situ hybridisation.",
+      "name": "Acute myeloid leukemia with a FET::ETS fusion",
+      "summary": "The methylation profile matches acute myeloid leukemia with a fusion between a gene of the FET family, such as FUS, and a gene of the ETS family, such as ERG.",
+      "confirm": "Confirm the fusion by reverse-transcription polymerase chain reaction, RNA sequencing or fluorescence in situ hybridization.",
       "copy_number_note": "The t(16;21)(p11.2;q22.2) that forms FUS::ERG is balanced and does not change copy number."
     },
     "AML_CBFA2T3-GLIS2": {
-      "name": "Acute myeloid leukaemia with CBFA2T3::GLIS2 fusion",
-      "summary": "The methylation profile matches acute myeloid leukaemia with the CBFA2T3::GLIS2 fusion, a leukaemia of young children that is often megakaryoblastic.",
+      "name": "Acute myeloid leukemia with CBFA2T3::GLIS2 fusion",
+      "summary": "The methylation profile matches acute myeloid leukemia with the CBFA2T3::GLIS2 fusion, a leukemia of young children that is often megakaryoblastic.",
       "confirm": "Confirm CBFA2T3::GLIS2 by reverse-transcription polymerase chain reaction or RNA sequencing; the inversion that forms it is not visible on a conventional karyotype.",
       "copy_number_note": "The inv(16)(p13.3q24.3) is cryptic and balanced, and does not change copy number."
     },
     "AMKL_AMKL-Like": {
-      "name": "Acute megakaryoblastic leukaemia and leukaemias with a similar methylation profile",
-      "summary": "The methylation profile matches acute megakaryoblastic leukaemia or a leukaemia with a similar profile.",
-      "confirm": "Confirm megakaryoblastic differentiation by flow cytometry (CD41, CD42b, CD61), and look for a defining lesion, such as NUP98::KDM5A, RBM15::MRTFA or a KMT2A rearrangement, by RNA sequencing or fluorescence in situ hybridisation.",
-      "note": "In a child with Down syndrome, myeloid leukaemia associated with Down syndrome is a separate entity.",
-      "copy_number_note": "Gain of chromosome 21 and complex karyotypes are common in acute megakaryoblastic leukaemia. Copy number cannot tell a constitutional trisomy 21 from an acquired one."
+      "name": "Acute megakaryoblastic leukemia and leukemias with a similar methylation profile",
+      "summary": "The methylation profile matches acute megakaryoblastic leukemia or a leukemia with a similar profile.",
+      "confirm": "Confirm megakaryoblastic differentiation by flow cytometry (CD41, CD42b, CD61), and look for a defining lesion, such as NUP98::KDM5A, RBM15::MRTFA or a KMT2A rearrangement, by RNA sequencing or fluorescence in situ hybridization.",
+      "note": "In a child with Down syndrome, myeloid leukemia associated with Down syndrome is a separate entity.",
+      "copy_number_note": "Gain of chromosome 21 and complex karyotypes are common in acute megakaryoblastic leukemia. Copy number cannot tell a constitutional trisomy 21 from an acquired one."
     },
     "AL_BCL11B-r": {
-      "name": "Acute leukaemia with BCL11B rearrangement",
-      "summary": "The methylation profile matches acute leukaemia with activation of BCL11B, a leukaemia of ambiguous or mixed T-cell and myeloid lineage.",
-      "confirm": "Establish the lineage by flow cytometry, and confirm the rearrangement by fluorescence in situ hybridisation with a BCL11B break-apart probe or by RNA or whole-genome sequencing.",
+      "name": "Acute leukemia with BCL11B rearrangement",
+      "summary": "The methylation profile matches acute leukemia with activation of BCL11B, a leukemia of ambiguous or mixed T-cell and myeloid lineage.",
+      "confirm": "Establish the lineage by flow cytometry, and confirm the rearrangement by fluorescence in situ hybridization with a BCL11B break-apart probe or by RNA or whole-genome sequencing.",
       "copy_number_note": "Most rearrangements are balanced. BCL11B can also be activated by a tandem amplification of a distant enhancer, which is too small to be seen at the resolution of this profile."
     },
     "AL_MLLT10-r": {
-      "name": "Acute leukaemia with MLLT10 rearrangement",
-      "summary": "The methylation profile matches acute leukaemia with MLLT10 rearrangement, which occurs in T-lymphoblastic, myeloid and mixed-phenotype leukaemias.",
-      "confirm": "Establish the lineage by flow cytometry, and confirm the rearrangement and its partner gene, often PICALM, by fluorescence in situ hybridisation, reverse-transcription polymerase chain reaction or RNA sequencing.",
-      "note": "MLLT10 rearrangements activate the HOXA genes, and the methylation profile is close to that of HOXA-activated T-lymphoblastic leukaemia.",
+      "name": "Acute leukemia with MLLT10 rearrangement",
+      "summary": "The methylation profile matches acute leukemia with MLLT10 rearrangement, which occurs in T-lymphoblastic, myeloid and mixed-phenotype leukemias.",
+      "confirm": "Establish the lineage by flow cytometry, and confirm the rearrangement and its partner gene, often PICALM, by fluorescence in situ hybridization, reverse-transcription polymerase chain reaction or RNA sequencing.",
+      "note": "MLLT10 rearrangements activate the HOXA genes, and the methylation profile is close to that of HOXA-activated T-lymphoblastic leukemia.",
       "copy_number_note": "The rearrangement is usually balanced and does not change copy number."
     },
     "B-ALL_ETV6-RUNX1": {
-      "name": "B-lymphoblastic leukaemia with ETV6::RUNX1 fusion",
-      "summary": "The methylation profile matches B-lymphoblastic leukaemia with the ETV6::RUNX1 fusion.",
-      "confirm": "Confirm ETV6::RUNX1 by fluorescence in situ hybridisation or reverse-transcription polymerase chain reaction; the translocation is usually not visible on a conventional karyotype.",
-      "note": "If the fusion is absent, consider B-lymphoblastic leukaemia with ETV6::RUNX1-like features.",
+      "name": "B-lymphoblastic leukemia with ETV6::RUNX1 fusion",
+      "summary": "The methylation profile matches B-lymphoblastic leukemia with the ETV6::RUNX1 fusion.",
+      "confirm": "Confirm ETV6::RUNX1 by fluorescence in situ hybridization or reverse-transcription polymerase chain reaction; the translocation is usually not visible on a conventional karyotype.",
+      "note": "If the fusion is absent, consider B-lymphoblastic leukemia with ETV6::RUNX1-like features.",
       "copy_number_note": "The t(12;21)(p13.2;q22.1) does not change copy number. Deletion of the other ETV6 allele at 12p13.2, extra copies of chromosome 21, and deletions of 6q and 9p are common additional changes."
     },
     "B-ALL_Aneuploidy": {
-      "name": "B-lymphoblastic leukaemia with high hyperdiploidy or hypodiploidy",
-      "summary": "The methylation profile matches the combined class of B-lymphoblastic leukaemia with an abnormal chromosome number, which holds high hyperdiploid leukaemia (51 to 67 chromosomes) and hypodiploid leukaemia.",
-      "confirm": "Establish the chromosome number by karyotype, by the DNA index on flow cytometry, or from the copy-number section of this report. High hyperdiploidy carries a favourable prognosis and hypodiploidy an unfavourable one, and a hypodiploid clone that has doubled its chromosomes can look hyperdiploid.",
-      "note": "Low hyperdiploid leukaemia (47 to 50 chromosomes) can also be assigned to this class. In low hypodiploid leukaemia TP53 mutations are frequent and often inherited, so germline testing should be considered.",
+      "name": "B-lymphoblastic leukemia with high hyperdiploidy or hypodiploidy",
+      "summary": "The methylation profile matches the combined class of B-lymphoblastic leukemia with an abnormal chromosome number, which holds high hyperdiploid leukemia (51 to 67 chromosomes) and hypodiploid leukemia.",
+      "confirm": "Establish the chromosome number by karyotype, by the DNA index on flow cytometry, or from the copy-number section of this report. High hyperdiploidy carries a favorable prognosis and hypodiploidy an unfavorable one, and a hypodiploid clone that has doubled its chromosomes can look hyperdiploid.",
+      "note": "Low hyperdiploid leukemia (47 to 50 chromosomes) can also be assigned to this class. In low hypodiploid leukemia TP53 mutations are frequent and often inherited, so germline testing should be considered.",
       "copy_number_note": "High hyperdiploidy shows gains of whole chromosomes, most often X, 4, 6, 10, 14, 17, 18 and 21, often with two extra copies of chromosome 21. A doubled hypodiploid clone shows its retained chromosomes at four copies and the others at two, with no chromosome at three copies; this section flags that pattern."
     },
     "B-ALL_PAX5_BCR-ABL1_BCR-ABL1-Like": {
-      "name": "B-lymphoblastic leukaemia with BCR::ABL1, BCR::ABL1-like features, PAX5 alteration or no defining lesion",
-      "summary": "The methylation profile matches the combined class of B-lymphoblastic leukaemia with BCR::ABL1 fusion, with BCR::ABL1-like features, with PAX5 alteration, or without a defining genetic lesion.",
-      "confirm": "Test for BCR::ABL1 promptly by fluorescence in situ hybridisation or reverse-transcription polymerase chain reaction, since it directs treatment with a tyrosine kinase inhibitor. If it is absent, look for BCR::ABL1-like features (kinase fusions such as those of ABL1, ABL2, PDGFRB, CSF1R and JAK2, CRLF2 rearrangement and other lesions of the JAK-STAT pathway) and for PAX5 alterations, usually by RNA sequencing.",
-      "note": "The methylation profile does not separate these groups. Some hypodiploid leukaemias also have this profile, so a hypodiploid pattern in the copy-number section should be followed up.",
+      "name": "B-lymphoblastic leukemia with BCR::ABL1, BCR::ABL1-like features, PAX5 alteration or no defining lesion",
+      "summary": "The methylation profile matches the combined class of B-lymphoblastic leukemia with BCR::ABL1 fusion, with BCR::ABL1-like features, with PAX5 alteration, or without a defining genetic lesion.",
+      "confirm": "Test for BCR::ABL1 promptly by fluorescence in situ hybridization or reverse-transcription polymerase chain reaction, since it directs treatment with a tyrosine kinase inhibitor. If it is absent, look for BCR::ABL1-like features (kinase fusions such as those of ABL1, ABL2, PDGFRB, CSF1R and JAK2, CRLF2 rearrangement and other lesions of the JAK-STAT pathway) and for PAX5 alterations, usually by RNA sequencing.",
+      "note": "The methylation profile does not separate these groups. Some hypodiploid leukemias also have this profile, so a hypodiploid pattern in the copy-number section should be followed up.",
       "copy_number_note": "Deletions of IKZF1 (7p12.2), of CDKN2A and CDKN2B (9p21.3) and of PAX5 (9p13.2) are common; large ones are visible, but many are below the resolution of this profile. The P2RY8::CRLF2 deletion lies in the pseudoautosomal region, which this profile does not cover."
     },
     "B-ALL_DUX4-r": {
-      "name": "B-lymphoblastic leukaemia with DUX4 rearrangement",
-      "summary": "The methylation profile matches B-lymphoblastic leukaemia with DUX4 rearrangement.",
-      "confirm": "Confirm by RNA sequencing. The rearrangement, usually an insertion of DUX4 into the immunoglobulin heavy chain locus, is not found by conventional karyotype or standard fluorescence in situ hybridisation. Expression of CD371 on the blasts supports it.",
+      "name": "B-lymphoblastic leukemia with DUX4 rearrangement",
+      "summary": "The methylation profile matches B-lymphoblastic leukemia with DUX4 rearrangement.",
+      "confirm": "Confirm by RNA sequencing. The rearrangement, usually an insertion of DUX4 into the immunoglobulin heavy chain locus, is not found by conventional karyotype or standard fluorescence in situ hybridization. Expression of CD371 on the blasts supports it.",
       "copy_number_note": "Deletions of ERG, common in this subtype, lie within the gene and are too small to be seen at this resolution."
     },
     "B-ALL_KMT2A-r": {
-      "name": "B-lymphoblastic leukaemia with KMT2A rearrangement",
-      "summary": "The methylation profile matches B-lymphoblastic leukaemia with KMT2A rearrangement, the most common leukaemia of infants.",
-      "confirm": "Confirm the rearrangement by fluorescence in situ hybridisation with a KMT2A break-apart probe, and identify the partner gene, most often AFF1, MLLT1 or MLLT3, by reverse-transcription polymerase chain reaction or RNA sequencing.",
-      "copy_number_note": "The rearrangement is balanced, and these leukaemias usually have few other copy-number changes."
+      "name": "B-lymphoblastic leukemia with KMT2A rearrangement",
+      "summary": "The methylation profile matches B-lymphoblastic leukemia with KMT2A rearrangement, the most common leukemia of infants.",
+      "confirm": "Confirm the rearrangement by fluorescence in situ hybridization with a KMT2A break-apart probe, and identify the partner gene, most often AFF1, MLLT1 or MLLT3, by reverse-transcription polymerase chain reaction or RNA sequencing.",
+      "copy_number_note": "The rearrangement is balanced, and these leukemias usually have few other copy-number changes."
     },
     "B-ALL_TCF3-PBX1": {
-      "name": "B-lymphoblastic leukaemia with TCF3::PBX1 fusion",
-      "summary": "The methylation profile matches B-lymphoblastic leukaemia with the TCF3::PBX1 fusion.",
-      "confirm": "Confirm TCF3::PBX1 by fluorescence in situ hybridisation or reverse-transcription polymerase chain reaction.",
+      "name": "B-lymphoblastic leukemia with TCF3::PBX1 fusion",
+      "summary": "The methylation profile matches B-lymphoblastic leukemia with the TCF3::PBX1 fusion.",
+      "confirm": "Confirm TCF3::PBX1 by fluorescence in situ hybridization or reverse-transcription polymerase chain reaction.",
       "copy_number_note": "Most cases carry the unbalanced derivative chromosome, der(19)t(1;19)(q23.3;p13.3), which shows as a gain of 1q from PBX1 (1q23.3) to the end of the arm. The balanced translocation does not change copy number."
     },
     "B-ALL_TCF3-HLF": {
-      "name": "B-lymphoblastic leukaemia with TCF3::HLF fusion",
-      "summary": "The methylation profile matches B-lymphoblastic leukaemia with the TCF3::HLF fusion, a rare leukaemia with a very poor prognosis.",
-      "confirm": "Confirm TCF3::HLF by reverse-transcription polymerase chain reaction, RNA sequencing or fluorescence in situ hybridisation.",
+      "name": "B-lymphoblastic leukemia with TCF3::HLF fusion",
+      "summary": "The methylation profile matches B-lymphoblastic leukemia with the TCF3::HLF fusion, a rare leukemia with a very poor prognosis.",
+      "confirm": "Confirm TCF3::HLF by reverse-transcription polymerase chain reaction, RNA sequencing or fluorescence in situ hybridization.",
       "copy_number_note": "The t(17;19)(q22;p13.3) is balanced and does not change copy number."
     },
     "B-ALL_ZNF384-r": {
-      "name": "B-lymphoblastic leukaemia with ZNF384 rearrangement",
-      "summary": "The methylation profile matches B-lymphoblastic leukaemia with ZNF384 rearrangement.",
-      "confirm": "Confirm the rearrangement by fluorescence in situ hybridisation with a ZNF384 break-apart probe or by RNA sequencing; partner genes include EP300, TCF3, TAF15 and CREBBP.",
-      "note": "The blasts often express myeloid antigens, and some cases meet the criteria for B/myeloid mixed-phenotype acute leukaemia.",
+      "name": "B-lymphoblastic leukemia with ZNF384 rearrangement",
+      "summary": "The methylation profile matches B-lymphoblastic leukemia with ZNF384 rearrangement.",
+      "confirm": "Confirm the rearrangement by fluorescence in situ hybridization with a ZNF384 break-apart probe or by RNA sequencing; partner genes include EP300, TCF3, TAF15 and CREBBP.",
+      "note": "The blasts often express myeloid antigens, and some cases meet the criteria for B/myeloid mixed-phenotype acute leukemia.",
       "copy_number_note": "The rearrangements are balanced and do not change copy number."
     },
     "B-ALL_MEF2D-r": {
-      "name": "B-lymphoblastic leukaemia with MEF2D rearrangement",
-      "summary": "The methylation profile matches B-lymphoblastic leukaemia with MEF2D rearrangement.",
+      "name": "B-lymphoblastic leukemia with MEF2D rearrangement",
+      "summary": "The methylation profile matches B-lymphoblastic leukemia with MEF2D rearrangement.",
       "confirm": "Confirm by RNA sequencing or reverse-transcription polymerase chain reaction; the most common fusion is MEF2D::BCL9.",
       "copy_number_note": "No copy-number change is characteristic."
     },
     "B-ALL_iAMP21": {
-      "name": "B-lymphoblastic leukaemia with intrachromosomal amplification of chromosome 21",
-      "summary": "The methylation profile matches B-lymphoblastic leukaemia with intrachromosomal amplification of chromosome 21 (iAMP21).",
-      "confirm": "Confirm by fluorescence in situ hybridisation with a RUNX1 probe: five or more RUNX1 signals per cell, with at least three extra copies on one abnormal chromosome 21.",
-      "copy_number_note": "The copy-number profile is informative here: chromosome 21 shows several copy-number levels, with the highest around RUNX1 and often a loss towards the end of 21q. This section flags that pattern."
+      "name": "B-lymphoblastic leukemia with intrachromosomal amplification of chromosome 21",
+      "summary": "The methylation profile matches B-lymphoblastic leukemia with intrachromosomal amplification of chromosome 21 (iAMP21).",
+      "confirm": "Confirm by fluorescence in situ hybridization with a RUNX1 probe: five or more RUNX1 signals per cell, with at least three extra copies on one abnormal chromosome 21.",
+      "copy_number_note": "The copy-number profile is informative here: chromosome 21 shows several copy-number levels, with the highest around RUNX1 and often a loss toward the end of 21q. This section flags that pattern."
     },
     "T-ALL_TAL1-like": {
-      "name": "T-lymphoblastic leukaemia, TAL1-like",
-      "summary": "The methylation profile matches T-lymphoblastic leukaemia with activation of TAL1 or a related gene (TAL2, LMO1 or LMO2).",
-      "confirm": "Confirm STIL::TAL1 by reverse-transcription polymerase chain reaction, and TAL1 or LMO2 rearrangements by fluorescence in situ hybridisation or RNA sequencing.",
-      "copy_number_note": "The STIL::TAL1 deletion at 1p33 spans about 90 thousand bases, too small to be seen at this resolution. Deletion of CDKN2A at 9p21.3, frequent in T-lymphoblastic leukaemia, is visible when it is large."
+      "name": "T-lymphoblastic leukemia, TAL1-like",
+      "summary": "The methylation profile matches T-lymphoblastic leukemia with activation of TAL1 or a related gene (TAL2, LMO1 or LMO2).",
+      "confirm": "Confirm STIL::TAL1 by reverse-transcription polymerase chain reaction, and TAL1 or LMO2 rearrangements by fluorescence in situ hybridization or RNA sequencing.",
+      "copy_number_note": "The STIL::TAL1 deletion at 1p33 spans about 90 thousand bases, too small to be seen at this resolution. Deletion of CDKN2A at 9p21.3, frequent in T-lymphoblastic leukemia, is visible when it is large."
     },
     "T-ALL_TLX1": {
-      "name": "T-lymphoblastic leukaemia with TLX1 activation",
-      "summary": "The methylation profile matches T-lymphoblastic leukaemia with activation of TLX1, usually by a translocation to a T-cell receptor locus.",
-      "confirm": "Confirm by fluorescence in situ hybridisation with a TLX1 break-apart probe or by RNA sequencing.",
+      "name": "T-lymphoblastic leukemia with TLX1 activation",
+      "summary": "The methylation profile matches T-lymphoblastic leukemia with activation of TLX1, usually by a translocation to a T-cell receptor locus.",
+      "confirm": "Confirm by fluorescence in situ hybridization with a TLX1 break-apart probe or by RNA sequencing.",
       "copy_number_note": "The t(10;14)(q24.3;q11.2) and t(7;10)(q34;q24.3) are balanced and do not change copy number."
     },
     "T-ALL_TLX3": {
-      "name": "T-lymphoblastic leukaemia with TLX3 activation",
-      "summary": "The methylation profile matches T-lymphoblastic leukaemia with activation of TLX3, usually by the cryptic translocation t(5;14)(q35.1;q32.2) with BCL11B.",
-      "confirm": "Confirm by fluorescence in situ hybridisation with a TLX3 break-apart probe or by RNA sequencing.",
+      "name": "T-lymphoblastic leukemia with TLX3 activation",
+      "summary": "The methylation profile matches T-lymphoblastic leukemia with activation of TLX3, usually by the cryptic translocation t(5;14)(q35.1;q32.2) with BCL11B.",
+      "confirm": "Confirm by fluorescence in situ hybridization with a TLX3 break-apart probe or by RNA sequencing.",
       "copy_number_note": "The translocation is cryptic and balanced, and does not change copy number."
     },
     "T-ALL_NKX2": {
-      "name": "T-lymphoblastic leukaemia with NKX2 activation",
-      "summary": "The methylation profile matches T-lymphoblastic leukaemia with activation of NKX2-1 or NKX2-5.",
-      "confirm": "Confirm by RNA sequencing, or by fluorescence in situ hybridisation for rearrangements of NKX2-1 or NKX2-5.",
+      "name": "T-lymphoblastic leukemia with NKX2 activation",
+      "summary": "The methylation profile matches T-lymphoblastic leukemia with activation of NKX2-1 or NKX2-5.",
+      "confirm": "Confirm by RNA sequencing, or by fluorescence in situ hybridization for rearrangements of NKX2-1 or NKX2-5.",
       "copy_number_note": "No copy-number change is characteristic."
     },
     "T-ALL_HOXA9_ETP": {
-      "name": "T-lymphoblastic leukaemia, HOXA-activated or early T-cell precursor-like",
-      "summary": "The methylation profile matches the combined class of T-lymphoblastic leukaemia with activation of the HOXA genes (by rearrangement of KMT2A, MLLT10 or NUP98, by SET::NUP214, or by a rearrangement of HOXA with a T-cell receptor locus) and early T-cell precursor-like leukaemia.",
-      "confirm": "Assess the early T-cell precursor immunophenotype by flow cytometry (no CD1a or CD8, weak CD5, and stem-cell or myeloid antigens), and look for the lesion that activates HOXA by fluorescence in situ hybridisation or RNA sequencing.",
-      "note": "A T-lymphoblastic leukaemia with MLLT10 rearrangement may be reported in this class or as acute leukaemia with MLLT10 rearrangement.",
+      "name": "T-lymphoblastic leukemia, HOXA-activated or early T-cell precursor-like",
+      "summary": "The methylation profile matches the combined class of T-lymphoblastic leukemia with activation of the HOXA genes (by rearrangement of KMT2A, MLLT10 or NUP98, by SET::NUP214, or by a rearrangement of HOXA with a T-cell receptor locus) and early T-cell precursor-like leukemia.",
+      "confirm": "Assess the early T-cell precursor immunophenotype by flow cytometry (no CD1a or CD8, weak CD5, and stem-cell or myeloid antigens), and look for the lesion that activates HOXA by fluorescence in situ hybridization or RNA sequencing.",
+      "note": "A T-lymphoblastic leukemia with MLLT10 rearrangement may be reported in this class or as acute leukemia with MLLT10 rearrangement.",
       "copy_number_note": "SET::NUP214 arises from a deletion of about 2.5 million bases from 9q34.11 to 9q34.13, which may show as a small loss. The other rearrangements are balanced."
     },
     "BPDCN": {
       "name": "Blastic plasmacytoid dendritic cell neoplasm",
       "summary": "The methylation profile matches blastic plasmacytoid dendritic cell neoplasm.",
-      "confirm": "Confirm by immunophenotyping: CD123, CD4 and CD56, with TCF4 and TCL1, and without the lineage markers of other leukaemias.",
+      "confirm": "Confirm by immunophenotyping: CD123, CD4 and CD56, with TCF4 and TCL1, and without the lineage markers of other leukemias.",
       "copy_number_note": "Losses are frequent, particularly of 5q, 6q, 9p21.3 with CDKN2A, 12p13 with ETV6 and CDKN1B, 13q with RB1, and 15q, and the karyotype is often complex."
     },
     "Normal_Control_BM": {
       "name": "Normal bone marrow",
       "summary": "The methylation profile matches normal bone marrow.",
-      "confirm": "Review the morphology and immunophenotype of the sample. If leukaemia is suspected, test a sample with more leukaemic cells.",
-      "copy_number_note": "A normal copy-number profile is expected. A copy-number change points to a clonal population, leukaemic or not, too small to change the methylation profile."
+      "confirm": "Review the morphology and immunophenotype of the sample. If leukemia is suspected, test a sample with more leukemic cells.",
+      "copy_number_note": "A normal copy-number profile is expected. A copy-number change points to a clonal population, leukemic or not, too small to change the methylation profile."
     }
   },
   "families": {
     "AML, HOX-related (NPM1, NUP98, DEK::NUP214, UBTF or KMT2A-r)": {
-      "name": "Acute myeloid leukaemia with HOX-related methylation",
-      "summary": "Acute myeloid leukaemia with a HOX-related methylation profile: NPM1 mutation, NUP98 rearrangement, DEK::NUP214 fusion, UBTF tandem duplication or KMT2A rearrangement. These genetic groups share much of their methylation pattern.",
-      "confirm": "Test for NPM1 mutation by polymerase chain reaction or sequencing, for KMT2A and NUP98 rearrangements and DEK::NUP214 by fluorescence in situ hybridisation, reverse-transcription polymerase chain reaction or RNA sequencing, and for UBTF tandem duplication by polymerase chain reaction or sequencing."
+      "name": "Acute myeloid leukemia with HOX-related methylation",
+      "summary": "Acute myeloid leukemia with a HOX-related methylation profile: NPM1 mutation, NUP98 rearrangement, DEK::NUP214 fusion, UBTF tandem duplication or KMT2A rearrangement. These genetic groups share much of their methylation pattern.",
+      "confirm": "Test for NPM1 mutation by polymerase chain reaction or sequencing, for KMT2A and NUP98 rearrangements and DEK::NUP214 by fluorescence in situ hybridization, reverse-transcription polymerase chain reaction or RNA sequencing, and for UBTF tandem duplication by polymerase chain reaction or sequencing."
     },
     "AML with IDH1/2 mutation (IDH, or NPM1 with IDH)": {
-      "name": "Acute myeloid leukaemia with IDH1 or IDH2 mutation",
-      "summary": "Acute myeloid leukaemia with an IDH1 or IDH2 mutation, with or without an NPM1 mutation. Both classes of this family carry an IDH mutation.",
+      "name": "Acute myeloid leukemia with IDH1 or IDH2 mutation",
+      "summary": "Acute myeloid leukemia with an IDH1 or IDH2 mutation, with or without an NPM1 mutation. Both classes of this family carry an IDH mutation.",
       "confirm": "Test for IDH1, IDH2 and NPM1 mutations by polymerase chain reaction or sequencing."
     },
     "T-ALL, other than TAL1 (HOXA/ETP, TLX1, TLX3 or NKX2)": {
-      "name": "T-lymphoblastic leukaemia other than TAL1-like",
-      "summary": "T-lymphoblastic leukaemia of the HOXA-activated or early T-cell precursor-like, TLX1, TLX3 or NKX2 groups, which share part of their methylation pattern.",
-      "confirm": "Establish the subtype by RNA sequencing, or by fluorescence in situ hybridisation for rearrangements of TLX1, TLX3 and NKX2-1 and of the genes that activate HOXA (KMT2A, MLLT10, NUP98 and SET::NUP214). Flow cytometry shows whether the immunophenotype is that of an early T-cell precursor."
+      "name": "T-lymphoblastic leukemia other than TAL1-like",
+      "summary": "T-lymphoblastic leukemia of the HOXA-activated or early T-cell precursor-like, TLX1, TLX3 or NKX2 groups, which share part of their methylation pattern.",
+      "confirm": "Establish the subtype by RNA sequencing, or by fluorescence in situ hybridization for rearrangements of TLX1, TLX3 and NKX2-1 and of the genes that activate HOXA (KMT2A, MLLT10, NUP98 and SET::NUP214). Flow cytometry shows whether the immunophenotype is that of an early T-cell precursor."
     }
   },
   "lineages": {
     "AML": {
-      "name": "Acute myeloid leukaemia",
-      "undetermined": "The methylation profile is that of acute myeloid leukaemia, but neither a single subtype nor a family of related subtypes reached the threshold. The genetic subtype has to be established by standard testing."
+      "name": "Acute myeloid leukemia",
+      "undetermined": "The methylation profile is that of acute myeloid leukemia, but neither a single subtype nor a family of related subtypes reached the threshold. The genetic subtype has to be established by standard testing."
     },
     "B-ALL": {
-      "name": "B-lymphoblastic leukaemia",
-      "undetermined": "The methylation profile is that of B-lymphoblastic leukaemia, but neither a single subtype nor a family of related subtypes reached the threshold. The genetic subtype has to be established by standard testing."
+      "name": "B-lymphoblastic leukemia",
+      "undetermined": "The methylation profile is that of B-lymphoblastic leukemia, but neither a single subtype nor a family of related subtypes reached the threshold. The genetic subtype has to be established by standard testing."
     },
     "T-ALL": {
-      "name": "T-lymphoblastic leukaemia",
-      "undetermined": "The methylation profile is that of T-lymphoblastic leukaemia, but neither a single subtype nor a family of related subtypes reached the threshold. The subtype has to be established by standard testing."
+      "name": "T-lymphoblastic leukemia",
+      "undetermined": "The methylation profile is that of T-lymphoblastic leukemia, but neither a single subtype nor a family of related subtypes reached the threshold. The subtype has to be established by standard testing."
     },
     "BPDCN": {
       "name": "Blastic plasmacytoid dendritic cell neoplasm",
@@ -249,12 +249,12 @@
       "undetermined": "The methylation profile is closest to normal bone marrow."
     },
     "Mixed phenotype": {
-      "name": "Mixed-phenotype acute leukaemia",
-      "undetermined": "The methylation profile is closest to mixed-phenotype acute leukaemia. The lineage has to be established by immunophenotyping."
+      "name": "Mixed-phenotype acute leukemia",
+      "undetermined": "The methylation profile is closest to mixed-phenotype acute leukemia. The lineage has to be established by immunophenotyping."
     },
     "Ambiguous lineage": {
-      "name": "Acute leukaemia of ambiguous lineage",
-      "undetermined": "The methylation profile is that of an acute leukaemia of ambiguous lineage, but no single subtype reached the threshold. The lineage and the genetic lesion have to be established by immunophenotyping and genetic testing."
+      "name": "Acute leukemia of ambiguous lineage",
+      "undetermined": "The methylation profile is that of an acute leukemia of ambiguous lineage, but no single subtype reached the threshold. The lineage and the genetic lesion have to be established by immunophenotyping and genetic testing."
     }
   },
   "levels": {
@@ -263,30 +263,30 @@
   },
   "not_in_model": {
     "AML": [
-      "Acute myeloid leukaemia with myelodysplasia-related changes, defined by karyotype or by mutations",
-      "Acute myeloid leukaemia with MECOM rearrangement",
-      "Acute myeloid leukaemia with TP53 mutation",
-      "Acute myeloid leukaemia with BCR::ABL1 fusion",
-      "Acute myeloid leukaemia without a defining genetic abnormality",
-      "Mixed-phenotype acute leukaemia",
-      "Myeloid neoplasms that are not acute leukaemia, such as myelodysplastic neoplasms"
+      "Acute myeloid leukemia with myelodysplasia-related changes, defined by karyotype or by mutations",
+      "Acute myeloid leukemia with MECOM rearrangement",
+      "Acute myeloid leukemia with TP53 mutation",
+      "Acute myeloid leukemia with BCR::ABL1 fusion",
+      "Acute myeloid leukemia without a defining genetic abnormality",
+      "Mixed-phenotype acute leukemia",
+      "Myeloid neoplasms that are not acute leukemia, such as myelodysplastic neoplasms"
     ],
     "B-ALL": [
-      "Hypodiploid B-lymphoblastic leukaemia as a class of its own; the model places it with high hyperdiploid leukaemia or with other classes",
-      "B-lymphoblastic leukaemia with NUTM1 rearrangement",
-      "B-lymphoblastic leukaemia with IGH::IL3 fusion",
-      "B-lymphoblastic leukaemia with IKZF1 N159Y mutation",
-      "B-lymphoblastic leukaemia with CDX2 and UBTF::ATXN7L3",
-      "Mixed-phenotype acute leukaemia"
+      "Hypodiploid B-lymphoblastic leukemia as a class of its own; the model places it with high hyperdiploid leukemia or with other classes",
+      "B-lymphoblastic leukemia with NUTM1 rearrangement",
+      "B-lymphoblastic leukemia with IGH::IL3 fusion",
+      "B-lymphoblastic leukemia with IKZF1 N159Y mutation",
+      "B-lymphoblastic leukemia with CDX2 and UBTF::ATXN7L3",
+      "Mixed-phenotype acute leukemia"
     ],
     "T-ALL": [
-      "T-lymphoblastic leukaemia with SPI1 fusion",
-      "T-lymphoblastic leukaemia with STAG2 and LMO2 alterations",
-      "Mixed-phenotype acute leukaemia"
+      "T-lymphoblastic leukemia with SPI1 fusion",
+      "T-lymphoblastic leukemia with STAG2 and LMO2 alterations",
+      "Mixed-phenotype acute leukemia"
     ],
     "Ambiguous lineage": [
-      "Mixed-phenotype acute leukaemia",
-      "Acute undifferentiated leukaemia"
+      "Mixed-phenotype acute leukemia",
+      "Acute undifferentiated leukemia"
     ]
   }
 }

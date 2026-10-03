@@ -96,7 +96,7 @@ def _text(x: float, y: float, content: str, size: float = FONT_SIZE, anchor: str
 def probability_chart(rows: Sequence[Tuple[str, float, str, str]], threshold: float, threshold_label: str,
                       title: str) -> str:
     """
-    Horizontal bar chart. rows: (class name shown, probability, colour, probability as text), most probable first.
+    Horizontal bar chart. rows: (class name shown, probability, color, probability as text), most probable first.
     threshold_label is the text of the threshold line ("Threshold 0.90"); title names the chart for screen readers.
     """
     wrapped = [wrap_label(name, LABEL_MAX) for name, _, _, _ in rows]
@@ -156,7 +156,7 @@ def probability_chart(rows: Sequence[Tuple[str, float, str, str]], threshold: fl
 
 
 def chip(colour: str, size: int = 12) -> str:
-    """A small square in a class or lineage colour, as inline SVG so that it also prints."""
+    """A small square in a class or lineage color, as inline SVG so that it also prints."""
     return (f'<svg class="chip" width="{size}" height="{size}" viewBox="0 0 {size} {size}" aria-hidden="true" '
             f'focusable="false"><rect x="0.5" y="0.5" width="{size - 1}" height="{size - 1}" rx="2" '
             f'fill="{escape(colour)}" stroke="{OUTLINE}" stroke-width="0.6"/></svg>')

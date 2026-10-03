@@ -101,7 +101,7 @@ def parse_args():
                    help="Per-read call error rate drawn per training sample, uniform on [0, this]; 0 = none. "
                         "Read simulations only (see models/corruption.py)")
     s.add_argument("--dilution_prob", type=float, default=0.0,
-                   help="Share of leukaemia training samples diluted with a normal-marrow array before the reads "
+                   help="Share of leukemia training samples diluted with a normal-marrow array before the reads "
                         "are simulated (see models/dilution.py); 0 = none")
     s.add_argument("--blast_min", type=float, default=0.2,
                    help="Diluted samples get a blast fraction drawn uniformly from [this, 1]")
@@ -122,7 +122,7 @@ def parse_args():
                    help="Dilute the inner validation sets as training does (once per sample, seeded)")
     v.add_argument("--eval_blasts", type=float, nargs="+", default=[1.0],
                    help="Blast fractions at which the read simulations are scored; 1 gives the undiluted conditions "
-                        "such as binary_0.30, 0.3 adds rows such as binary-blast30_0.30 (every leukaemia sample of "
+                        "such as binary_0.30, 0.3 adds rows such as binary-blast30_0.30 (every leukemia sample of "
                         "the outer fold diluted to 30%% blasts with a normal marrow of the same fold)")
     v.add_argument("--eval_call_errors", type=float, nargs="+", default=[0.0],
                    help="Per-read call error rates at which the read simulations are scored; 0 gives the "

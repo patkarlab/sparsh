@@ -52,7 +52,7 @@ IMBALANCE_MODES = ("sampler", "sampler_alpha", "legacy_upsample")
 
 @dataclass
 class TrainConfig:
-    # optimisation
+    # optimization
     epochs: int = 300
     learning_rate: float = 1e-4
     weight_decay: float = 1e-4
@@ -79,7 +79,7 @@ class TrainConfig:
     call_error_max: float = 0.0
     val_call_error: float = 0.0
     eval_call_errors: Tuple[float, ...] = (0.0,)
-    # dilution by normal marrow (models/dilution.py): training dilutes each leukaemia sample with
+    # dilution by normal marrow (models/dilution.py): training dilutes each leukemia sample with
     # probability dilution_prob to a blast fraction from [blast_min, 1]; val_dilution does the same, once
     # per sample, for the inner validation sets; the outer folds are scored at every blast fraction in
     # eval_blasts (1 = undiluted). Partners: normal_class arrays of the fit
@@ -208,7 +208,7 @@ def split_indices(y: np.ndarray, groups: Optional[np.ndarray], n_splits: int, se
         splitter = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
         return list(splitter.split(dummy, y))
     # StratifiedGroupKFold(shuffle=True) did not shuffle correctly before scikit-learn 1.8 and lost
-    # stratification. Randomise the group order ourselves (seeded) and use the deterministic algorithm,
+    # stratification. Randomize the group order ourselves (seeded) and use the deterministic algorithm,
     # which gives stratified, reproducible folds on every scikit-learn version.
     _, inverse = np.unique(np.asarray(groups, dtype=str), return_inverse=True)
     relabelled = np.random.RandomState(seed).permutation(inverse.max() + 1)[inverse]
@@ -252,7 +252,7 @@ T_MIN, T_MAX = 0.25, 4.0
 
 def fit_temperature(logits: np.ndarray, y: np.ndarray) -> float:
     """
-    Single temperature T minimising the NLL of softmax(logits / T), kept within [0.25, 4].
+    Single temperature T minimizing the NLL of softmax(logits / T), kept within [0.25, 4].
     When every inner-validation sample is already correct the NLL keeps falling as T -> 0,
     so no temperature is fitted (T = 1).
     """
@@ -289,7 +289,7 @@ def make_inner_sets(X: np.ndarray, sample_ids: np.ndarray, cfg: "TrainConfig", y
                     normal_idx: Optional[int] = None) -> List[np.ndarray]:
     """
     Fixed corrupted copies of the inner validation samples, one per validation coverage. With
-    val_dilution, leukaemia samples are first diluted with normal marrow (partners), once per sample.
+    val_dilution, leukemia samples are first diluted with normal marrow (partners), once per sample.
     """
     if cfg.val_dilution and cfg.dilution_prob > 0:
         X = dilute_random(X, sample_ids, y == normal_idx, partners, partner_ids, cfg.dilution_prob,

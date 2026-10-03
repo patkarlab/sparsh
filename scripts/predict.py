@@ -4,11 +4,11 @@ SPARSH prediction on nanopore samples, with optional evaluation against known la
 
 Examples
     # a folder of per-sample CSV files, scored against known diagnoses
-    python scripts/predict.py --model_dir /path/to/v04_labels --ont_dir samples \
+    python scripts/predict.py --model_dir /path/to/sparsh_model_0.4.0 --ont_dir samples \
         --output_dir predictions/batch1 --ground_truth truth.csv
 
     # one or a few samples
-    python scripts/predict.py --model_dir /path/to/v04_labels --samples S01.csv --output_dir predictions/S01
+    python scripts/predict.py --model_dir /path/to/sparsh_model_0.4.0 --samples S01.csv --output_dir predictions/S01
 
 Input CSVs: wide format, one row, one column per CpG, values = methylated
 fraction in [0, 1] (see data/ont.py). The model directory supplies everything

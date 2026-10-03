@@ -6,11 +6,11 @@ Label audit of the training arrays: which samples disagree with their label?
         --run runs/my_model --annotations annotations.csv --out_dir label_audit
 
 Training arrays only. Two independent signals, as in the label cleaning of Lamprey
-(Achterberg et al., medRxiv 2026):
+(Achterberg et al., medRxiv 2026, doi:10.64898/2026.07.02.26356825):
 
-1. Neighbourhood. PCA (default 100 components) of the most variable CpGs
+1. Neighborhood. PCA (default 100 components) of the most variable CpGs
    (default 50,000) among the audited samples; for each sample, how many of its
-   k nearest neighbours (default 20) share its label, and which label most of
+   k nearest neighbors (default 20) share its label, and which label most of
    them carry.
 2. Cross-validation. With --run (a finished train.py run on the same samples),
    the out-of-fold probability each sample received for its own label: at
@@ -18,17 +18,17 @@ Training arrays only. Two independent signals, as in the label cleaning of Lampr
    conditions. Samples absent from the run, or whose label differs from the one
    the run used, get no value.
 
-A sample is flagged "lamprey" when at most 1 of its k neighbours shares its label
+A sample is flagged "lamprey" when at most 1 of its k neighbors shares its label
 and its mean CV probability for that label is at most 0.05 (Lamprey's rule), and
-"review" when at most a quarter of the neighbours that could share its label do
+"review" when at most a quarter of the neighbors that could share its label do
 (k, or the class size minus one for a class smaller than k + 1) or its CV
 probability at --condition is below 0.5. Flags are for review, not automatic
-relabelling. Labels are those of the training pickle after --label_map.
+relabeling. Labels are those of the training pickle after --label_map.
 
 --annotations adds columns (for example source series and CIMP status) by Sample_ID.
 
 Outputs in --out_dir: audit.csv (one row per audited sample), flagged.csv,
-summary.txt (per-class counts and label against neighbour-majority label).
+summary.txt (per-class counts and label against neighbor-majority label).
 """
 
 import argparse
@@ -86,7 +86,7 @@ def cv_own_probabilities(run: Path, sample_ids, labels, condition: str):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Label audit of training arrays (neighbourhood and CV)")
+    ap = argparse.ArgumentParser(description="Label audit of training arrays (neighborhood and CV)")
     ap.add_argument("--data_path", required=True)
     ap.add_argument("--label_map", default=str(REPO / "configs" / "label_map.json"))
     ap.add_argument("--exclude_ids", default=None)
@@ -131,13 +131,13 @@ def main():
     neigh = labels[idx[:, 1:]]
     same = (neigh == labels[:, None]).sum(axis=1)
     class_size = pd.Series(labels).map(pd.Series(labels).value_counts()).to_numpy()
-    same_frac = same / np.maximum(np.minimum(args.k, class_size - 1), 1)   # a class of 6 has at most 5 same-label neighbours
+    same_frac = same / np.maximum(np.minimum(args.k, class_size - 1), 1)   # a class of 6 has at most 5 same-label neighbors
     maj, maj_n = [], []
     for row in neigh:
         vc = pd.Series(row).value_counts()
         maj.append(vc.index[0])
         maj_n.append(int(vc.iloc[0]))
-    say(f"\nNeighbourhood: {len(top)} most variable CpGs, {n_pcs} principal components, k = {args.k}")
+    say(f"\nNeighborhood: {len(top)} most variable CpGs, {n_pcs} principal components, k = {args.k}")
 
     audit = pd.DataFrame({"Sample_ID": ids, "label": labels, "raw_label": raw,
                           f"same_label_of_{args.k}": same, "same_label_fraction": same_frac,
@@ -173,7 +173,7 @@ def main():
     say(summ.to_string(float_format=lambda v: f"{v:.2f}"))
     say(f"\nFlagged for review: {int(audit['flag_review'].sum())}; by Lamprey's rule: {int(audit['flag_lamprey'].sum())}")
     if len(flagged):
-        say("\nFlagged samples, label (rows) against neighbour-majority label (columns):")
+        say("\nFlagged samples, label (rows) against neighbor-majority label (columns):")
         say(pd.crosstab(flagged["label"], flagged["neighbour_majority"]).to_string())
     (out / "summary.txt").write_text("\n".join(LOG) + "\n")
     say(f"\nWritten to {out}")

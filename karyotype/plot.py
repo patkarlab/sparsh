@@ -1,10 +1,10 @@
 """
 Copy-number figures for one sample: the whole genome, and one panel per chromosome.
 
-Grey points are the log ratios of the analysis bins; lines are the segments, red for gains and blue for losses
-against the normal copy number of the chromosome, dark grey where unchanged. The log ratios are drawn so that
-zero is two copies in the leukaemic cells, at the fitted fraction and baseline: gains lie above the line and
-losses below it, whatever the ploidy of the leukaemia. (The files keep the log ratios as computed, centred on
+Gray points are the log ratios of the analysis bins; lines are the segments, red for gains and blue for losses
+against the normal copy number of the chromosome, dark gray where unchanged. The log ratios are drawn so that
+zero is two copies in the leukemic cells, at the fitted fraction and baseline: gains lie above the line and
+losses below it, whatever the ploidy of the leukemia. (The files keep the log ratios as computed, centered on
 the median autosomal bin.) The vertical range follows the segments, from -1 to 1 at least and -2 to 2 at most,
 and bins beyond it are drawn on its edge. The right-hand axis of the genome figure marks the levels expected
 for 0 to 8 copies, so a segment can be read against it directly.
@@ -29,12 +29,12 @@ STAIN = {"gneg": "#ffffff", "gpos25": "#d9d9d9", "gpos33": "#cccccc", "gpos50": 
 
 def _subtitle(fit) -> str:
     if fit.purity is None:
-        return "No change away from the baseline, so the leukaemic fraction is not estimable."
-    return f"Leukaemic fraction {fit.purity:.2f}, baseline {fit.baseline} copies, computed from read depth."
+        return "No change away from the baseline, so the leukemic fraction is not estimable."
+    return f"Leukemic fraction {fit.purity:.2f}, baseline {fit.baseline} copies, computed from read depth."
 
 
 def diploid_level(fit) -> float:
-    """Log2 ratio (as computed, against the median autosomal bin) of two copies in the leukaemic cells."""
+    """Log2 ratio (as computed, against the median autosomal bin) of two copies in the leukemic cells."""
     if fit.purity is None:
         return 0.0
     return float(expected_log2(2, 2, fit.purity, fit.baseline)) + fit.offset
@@ -74,7 +74,7 @@ def plot_genome(path_stem: Path, sample: str, bins, log_ratio, seg, copies, norm
             ax.axvspan(offsets[c], offsets[c] + lengths[c], color="#f2f2f2", lw=0, zorder=0)
     x_mid = np.array([offsets.get(c, np.nan) for c in bins.chrom]) + (bins.start + bins.end) / 2.0
     use = np.isfinite(log_ratio) & np.isin(bins.chrom, chroms)
-    zero = diploid_level(fit)                           # two copies in the leukaemic cells are drawn at 0
+    zero = diploid_level(fit)                           # two copies in the leukemic cells are drawn at 0
     top = _top(seg["mean"].to_numpy(dtype=float) - zero)    # bins beyond the range sit on its edge
     y = np.clip(log_ratio - zero, -top, top)
     ax.scatter(x_mid[use], y[use], s=1.2, c=POINTS, lw=0, zorder=2, rasterized=True)
@@ -125,7 +125,7 @@ def plot_chromosomes(path_stem: Path, sample: str, bins, log_ratio, seg, copies,
     chroms = [c for c in CHROMOSOMES if not (c == "chrY" and sex == "XX")]
     ncol = 6
     nrow = -(-len(chroms) // ncol)
-    zero = diploid_level(fit)                           # two copies in the leukaemic cells are drawn at 0
+    zero = diploid_level(fit)                           # two copies in the leukemic cells are drawn at 0
     top = _top(seg["mean"].to_numpy(dtype=float) - zero)
     changed = {}
     by_chrom = {}

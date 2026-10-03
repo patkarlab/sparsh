@@ -328,7 +328,7 @@ def interpret(case: Case, res: Result, ctx: Context) -> Interpretation:
     reported_normal = ((case.level == "subtype" and case.top == NORMAL_CLASS)
                        or (case.level in ("subtype", "no_subtype", "lineage") and res.lineage == NORMAL_LINEAGE))
     if reported_normal:
-        caveats.append("No leukaemia methylation profile was detected. If leukaemia is suspected, consider a low "
+        caveats.append("No leukemia methylation profile was detected. If leukemia is suspected, consider a low "
                        "blast percentage in the sequenced sample, a problem with the sample such as an aspirate "
                        "diluted with blood, or a disease that the model does not contain.")
     lineage = res.lineage if res.lineage is not None else case.lineage
@@ -337,7 +337,7 @@ def interpret(case: Case, res: Result, ctx: Context) -> Interpretation:
     # shown for every AML result, since common AML entities are outside the model, and for other lineages only when
     # no subtype or family was reported
     if case.coverage_ok and missing and (lineage == "AML" or case.level == "lineage"):
-        intro = ("The model does not contain every leukaemia. A sample of an entity outside the model is reported "
+        intro = ("The model does not contain every leukemia. A sample of an entity outside the model is reported "
                  "as the most similar class, family or lineage, or not at all. Entities not in the model include:")
         not_in_model = list(missing)
     headline = first_sentence(paragraphs[0]) if paragraphs else ""
@@ -416,7 +416,7 @@ def about_text(ctx: Context) -> List[str]:
     m = ctx.model
     t = fmt_threshold(ctx.threshold)
     normal = NORMAL_LINEAGE in ctx.hierarchy.lineages
-    what = "acute leukaemia and normal bone marrow" if normal else "acute leukaemia"
+    what = "acute leukemia and normal bone marrow" if normal else "acute leukemia"
     size = (f"{fmt_int(m.n_training_arrays)} Illumina methylation arrays of {what}, in {m.n_classes} classes"
             if m.n_training_arrays else f"Illumina methylation arrays of {what}, in {m.n_classes} classes")
     if m.train_sim in ("reads", "binary", "oneread"):
@@ -458,7 +458,7 @@ def about_text(ctx: Context) -> List[str]:
         sentences.append(f"A result is reported at the most specific level that reaches the threshold of {t}: a "
                          "single subtype, then a lineage, using the summed probability of the lineage's classes; "
                          "when neither reaches it, no result is reported.")
-    sentences.append("The model knows only the classes it was trained on, so a leukaemia of another kind is reported "
+    sentences.append("The model knows only the classes it was trained on, so a leukemia of another kind is reported "
                      "as the most similar class, family or lineage, or not at all, and every result needs "
                      "confirmation by established diagnostic methods.")
     return sentences

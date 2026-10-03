@@ -1,26 +1,26 @@
 """
-Dilution of leukaemia profiles by normal marrow.
+Dilution of leukemia profiles by normal marrow.
 
 A marrow sample with a blast fraction b is, at every CpG, a mixture of the
 blasts' methylation and that of the normal cells:
-    beta_mix = b * beta_leukaemia + (1 - b) * beta_normal
+    beta_mix = b * beta_leukemia + (1 - b) * beta_normal
 The training arrays come mostly from high-blast diagnostic samples, while a
 nanopore sample may have as few as 20% blasts. Mixing an array profile with a
 normal-marrow array before the reads are simulated reproduces that dilution.
 The label does not change, and normal marrows are never mixed. Where the
-partner has no value, the leukaemia value is kept.
+partner has no value, the leukemia value is kept.
 
 Which normal marrows are used. A patient's own normal cells are never part of
 the training data, so the samples that are scored are diluted with normal
 marrows the network has not seen, neither as a normal-marrow sample nor as a
 dilution partner:
-Training   : each leukaemia sample in a batch is diluted with probability
+Training   : each leukemia sample in a batch is diluted with probability
              dilution_prob, at a blast fraction drawn uniformly from
              [blast_min, 1], with a random normal marrow of the fit set.
 Validation : the same, drawn once per inner-validation sample (seeded by its
              Sample_ID), with a normal marrow of the inner-validation split, so
              early stopping and temperature see the same mixture.
-Evaluation : every leukaemia sample of the outer fold at a fixed blast fraction
+Evaluation : every leukemia sample of the outer fold at a fixed blast fraction
              (conditions such as binary-blast30_0.30), with a normal marrow of
              the same outer fold. Only the input is built from it; its own label
              and prediction are untouched.

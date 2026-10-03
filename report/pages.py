@@ -144,7 +144,7 @@ def probabilities(case: Case, ctx: Context) -> str:
     svg = probability_chart(rows, t, f"Threshold {text.fmt_threshold(t)}",
                             f"Class probabilities of sample {case.sample}: the {len(rows)} most probable classes")
     n = len(ctx.classes)
-    caption = (f"The {len(rows)} most probable of the model's {n} classes, in the class colours. The dashed line "
+    caption = (f"The {len(rows)} most probable of the model's {n} classes, in the class colors. The dashed line "
                f"marks the reporting threshold of {text.fmt_threshold(t)}. The probabilities of all {n} classes add "
                "up to 1.")
     sums = text.lineage_sums(case, ctx)
@@ -236,7 +236,7 @@ def _alternatives(d: dict) -> str:
     """
     The other readings of the profile that the copy-number step noted (in files without that mark, the best fit
     at each other baseline whose cost is within 20 of the chosen one), in words: chromosome count and ploidy
-    class, baseline, leukaemic fraction and the difference in cost.
+    class, baseline, leukemic fraction and the difference in cost.
     """
     fit = d.get("fit") if isinstance(d.get("fit"), dict) else {}
     chosen = d.get("baseline_copies")
@@ -250,7 +250,7 @@ def _alternatives(d: dict) -> str:
         if (marked and not a.get("noted")) or (not marked and delta > 20):
             continue
         text = f"{a['modal_number']} chromosomes ({a['ploidy_class']}), " if "modal_number" in a else ""
-        words.append(f"{text}baseline {a['baseline']} copies, leukaemic fraction {a['purity']:.2f} "
+        words.append(f"{text}baseline {a['baseline']} copies, leukemic fraction {a['purity']:.2f} "
                      f"(cost higher by {delta:.1f})")
     return "; ".join(words)
 
@@ -311,12 +311,12 @@ def karyotype(case: Case, res: text.Result, ctx: Context) -> str:
                 value += f" ({d['sex_source']})"
             rows.append((label, value))
     if isinstance(d.get("leukaemic_fraction"), (int, float)) and not isinstance(d.get("leukaemic_fraction"), bool):
-        rows.append(("Leukaemic fraction (from copy number)", f"{d['leukaemic_fraction']:.2f}"))
+        rows.append(("Leukemic fraction (from copy number)", f"{d['leukaemic_fraction']:.2f}"))
         alternatives = _alternatives(d)
         if alternatives:
             rows.append(("Other ploidies that fit", alternatives))
     elif "leukaemic_fraction" in d:
-        rows.append(("Leukaemic fraction (from copy number)", "not estimable"))
+        rows.append(("Leukemic fraction (from copy number)", "not estimable"))
     arms = _changed_arms(d)
     if arms:
         rows.append(("Arms changed (majority copy number)", arms))
@@ -371,9 +371,9 @@ def karyotype(case: Case, res: text.Result, ctx: Context) -> str:
         alt = e(f"Copy-number profile of {case.sample}")
         caption = kt.figure_source
         if "fit" in d or "method" in d:                 # drawn by the copy-number module
-            caption = ("Read depth along the genome against the reference of other samples: grey points are bins, "
+            caption = ("Read depth along the genome against the reference of other samples: gray points are bins, "
                        "lines are segments, red for gains and blue for losses, and zero is two copies in the "
-                       "leukaemic cells. The right-hand axis gives the copy number in the leukaemic cells at the "
+                       "leukemic cells. The right-hand axis gives the copy number in the leukemic cells at the "
                        f"fitted fraction. File {kt.figure_source}.")
         parts.append(f'<figure><img class="karyotype" src="{kt.figure}" alt="{alt}">'
                      f"<figcaption>{e(caption)}</figcaption></figure>")

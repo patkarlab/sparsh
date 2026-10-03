@@ -11,7 +11,7 @@ bin is scaled by the number of 100 kb bins it actually holds.
 GC correction is done per sample: the median read density of autosomal bins
 is taken within narrow classes of GC content, a cubic curve is laid through
 those medians, and every bin is divided by the value of the curve at its GC. Medians keep the correction robust to real gains and losses.
-The one per cent of bins with the most extreme GC content (for example the
+The one percent of bins with the most extreme GC content (for example the
 GC-rich ends of chromosomes 16, 17 and 19) are left out, because there the
 correction rests on too few bins.
 
@@ -21,7 +21,7 @@ same way, so it is removed by dividing by a reference built from the cohort:
 the median, bin by bin, of the GC-corrected profiles of the other samples.
 The sample being called is always left out of its own reference. The median
 is robust to the cohort's aberrations as long as no single bin is changed in
-most samples, which holds for a mixed leukaemia cohort. Bins whose reference
+most samples, which holds for a mixed leukemia cohort. Bins whose reference
 is very low or whose spread across the cohort is large are not used.
 
 The sex chromosomes need the constitutional sex of each sample: two X
@@ -34,7 +34,7 @@ threshold is taken from the cohort itself when its samples fall into two
 clearly separated groups, midway between them on a log scale, and otherwise
 from fixed values. A sample close to the threshold is decided by the X
 chromosome and gets a warning, since loss of the Y chromosome in the
-leukaemic cells, or loss of an X, makes a sample harder to read.
+leukemic cells, or loss of an X, makes a sample harder to read.
 """
 
 import json
@@ -52,8 +52,8 @@ from .reference import FINE_BIN, load_bin_table
 
 BIN_SIZES = (500_000, 1_000_000, 2_000_000, 5_000_000)
 # Read density on chromosome Y relative to the autosomes (both per usable 100 kb bin). A man's single Y gives
-# about 0.45. A woman's reads there are misplaced ones: near 0.005 in ligation libraries, but from 0.09 to 0.16 in
-# the transposase libraries of the validation cohort, from reads of sequence that X and Y share.
+# about 0.45. A woman's reads there are misplaced ones: near 0.005 in ligation libraries, but up to about 0.16 in
+# transposase libraries, from reads of sequence that X and Y share.
 Y_MALE = 0.30            # fixed thresholds, used when the cohort does not show two clear groups
 Y_FEMALE = 0.20
 MIN_Y_SEPARATION = 0.3   # log10: the cohort's two groups must lie at least two-fold apart on Y,
@@ -215,11 +215,11 @@ def cohort_y_groups(y_values: List[float], x_values: Optional[List[float]] = Non
                     min_samples: int = 10) -> Optional[Tuple[float, float]]:
     """
     The cohort's women and men from the Y density: two-means clustering of log10 Y density over every split into a
-    low and a high group of two or more. Returns (threshold, separation), the midpoint between the group centres and
-    their distance in log10, or None when there are fewer than min_samples values, when the centres lie less than
+    low and a high group of two or more. Returns (threshold, separation), the midpoint between the group centers and
+    their distance in log10, or None when there are fewer than min_samples values, when the centers lie less than
     MIN_Y_SEPARATION apart, or, given X densities, when the low group does not carry at least MIN_X_RATIO times the X
     reads of the high group (two X chromosomes against one): the groups are then not women and men, as with a cohort of
-    men some of whom have lost the Y in their leukaemic cells.
+    men some of whom have lost the Y in their leukemic cells.
     """
     xs = x_values if x_values is not None else [float("nan")] * len(y_values)
     pairs = sorted((np.log10(y + 1e-4), x) for y, x in zip(y_values, xs) if np.isfinite(y))
@@ -286,7 +286,7 @@ def assign_sex(samples: List[Sample], table: pd.DataFrame, thresholds: Optional[
             if np.isfinite(x) and x < X_MALE:
                 s.warnings.append(
                     "Few reads on chromosome Y and a single-copy level of chromosome X: either a woman whose "
-                    "leukaemic cells have lost an X, or a man whose leukaemic cells have lost the Y. Taken as "
+                    "leukemic cells have lost an X, or a man whose leukemic cells have lost the Y. Taken as "
                     "female; give the sex in the sample sheet to settle it.")
         elif np.isfinite(x) and x < X_MALE:
             s.sex, s.sex_source = "XY", "inferred from chromosome X (few reads on Y)"
@@ -356,7 +356,7 @@ class PanelReference:
 class FlatReference:
     """
     No reference of other samples: every bin is expected at the sample's own GC-corrected median. For a first look
-    at one sample before a cohort is counted; mappability and library artefacts are not removed.
+    at one sample before a cohort is counted; mappability and library artifacts are not removed.
     """
 
     def __init__(self, size: int, bins: Bins):

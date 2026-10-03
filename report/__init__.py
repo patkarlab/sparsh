@@ -1,10 +1,10 @@
 """
 SPARSH per-case reports: one self-contained HTML page per sample from the output folder of scripts/predict.py.
 
-The package turns predictions.csv, and whatever else is at hand, into pages a haematologist can read and print:
+The package turns predictions.csv, and whatever else is at hand, into pages a hematologist can read and print:
 
   inputs.py  reads and checks the inputs (predictions, the record of the prediction run, class names, hierarchy,
-             colours, interpretation text, sample sheet, copy-number karyotypes and the model's cross-validation
+             colors, interpretation text, sample sheet, copy-number karyotypes and the model's cross-validation
              tables) and gathers them into one Case per sample and one Context shared by all pages;
   text.py    writes the sentences of a report from those data: the result, the reporting level, the caveats,
              the evidence from cross-validation and the explanation of the method;

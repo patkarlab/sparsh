@@ -1,6 +1,6 @@
 # Python packages of SPARSH, for pip. envs/sparsh.yml installs the same packages with conda, together with samtools,
-# which the copy-number step needs, and Optuna. Install the PyTorch build that matches your hardware
-# (https://pytorch.org).
+# modkit and minimap2, which the single-sample pipeline and the copy-number step need, and Optuna. With pip, install
+# those tools separately, and the PyTorch build that matches your hardware (https://pytorch.org).
 torch>=2.0
 numpy>=1.24
 pandas>=2.0

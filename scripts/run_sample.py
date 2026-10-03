@@ -3,37 +3,38 @@ r"""
 SPARSH for one sample, from its nanopore reads to its report, in one command.
 
     python scripts/run_sample.py --sample S01 --bam /data/run/bam_pass/barcode01 --out_dir results/S01 \
-        --reference hg19_all.fasta --manifest EPIC-8v2-0_A2.csv --model_dir /models/v04_labels \
+        --reference hg19.fasta --manifest EPIC-8v2-0_A2.csv --model_dir /path/to/sparsh_model_0.4.0 \
         --panel cn_panel.tsv.gz --sex F --blast_percent 80
 
 --bam takes one or more BAM files, or folders of BAM files such as a barcode folder of a run's bam_pass, with the
 reads aligned to the reference or not aligned at all; in a folder, files of failed reads (_fail_ in the name) are
 left out. The work is done in steps, each in its own folder of --out_dir:
 
-  bam/           the reads as one sorted and indexed file, <sample>.bam. Files aligned to --reference (the same
-                 sequence names and lengths as its .fai index) are merged and sorted; a single such file that is
-                 already sorted is linked, not copied. Otherwise the reads are aligned again: files aligned to another
-                 reference are first returned to unaligned reads (samtools reset, primary records only), and all are
-                 merged and aligned with dorado aligner, as the laboratory's pipeline does, keeping the tags of the
-                 modified-base calls (--aligner minimap2 aligns with samtools fastq and minimap2 -y instead). The
-                 number of primary records is checked against the input.
-  methylation/   modkit pileup --modified-bases 5mC 5hmC --combine-mods --cpg, the command of the laboratory's
-                 MethPipe pipeline, and scripts/bedmethyl_to_csv.py, which adds the calls of the two strands of each
-                 probe's CpG (--strands forward takes the forward strand alone, as MethPipe does): <sample>.csv, the
-                 input of the model, and the pileup, compressed.
+  bam/           the reads as one sorted and indexed file, <sample>.bam. When every file is aligned to
+                 --reference (the same sequence names and lengths as its .fai index), they are merged and sorted, and
+                 the records of the result are counted against those of the inputs; a single such file that is
+                 already sorted is linked, not copied. Otherwise the reads of all files are aligned again: aligned
+                 files, whether aligned to --reference or to another reference, are first returned to unaligned reads
+                 (samtools reset, primary records only), and all are merged and aligned with dorado aligner, keeping
+                 the tags of the modified-base calls (--aligner minimap2 aligns with samtools fastq and minimap2 -y
+                 instead); the primary records of the result are counted against the reads.
+  methylation/   modkit pileup --modified-bases 5mC 5hmC --combine-mods --cpg, and scripts/bedmethyl_to_csv.py,
+                 which adds the calls of the two strands of each probe's CpG (--strands forward takes the forward
+                 strand alone): <sample>.csv, the input of the model, and the pileup, compressed.
   prediction/    scripts/predict.py with --model_dir.
   copy_number/   reads counted in 100 kb bins (primary alignments with mapping quality 20 or more) and the copy-number
                  call against the stored reference --panel (made with scripts/karyotype.py panel from a counted
                  cohort sequenced the same way); --no_panel calls with GC correction only, for a first look.
   report/        scripts/report.py; the page is also copied to <out_dir>/<sample>.report.html.
 
---sex (F or M) and --blast_percent go into sample_sheet.csv, which the copy-number call (the sex, and the leukaemic
+--sex (F or M) and --blast_percent go into sample_sheet.csv, which the copy-number call (the sex, and the leukemic
 fraction within 20 points of the blast percentage) and the report use. A finished step is not run again, so a
 stopped run continues with the same command; --redo STEP runs that step and the ones after it again. run.log holds
 every command and its output; run_info.json the inputs, settings, tool versions and the time of each step.
 
 Tools are taken from the options, else from the environment variables SAMTOOLS, MODKIT, DORADO and MINIMAP2, else
-from PATH. MethPipe runs modkit 0.6.1 and dorado 1.3.0; other versions are noted in run_info.json and run.log.
+from PATH. SPARSH was tested with modkit 0.6.1 and dorado 1.3.0; other versions are noted in run_info.json and
+run.log.
 """
 
 import argparse
@@ -52,7 +53,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 STEPS = ("bam", "methylation", "prediction", "copy_number", "report")
 MODKIT_ARGS = ["--modified-bases", "5mC", "5hmC", "--combine-mods", "--cpg"]
-METHPIPE_VERSIONS = {"modkit": "0.6.1", "dorado": "1.3.0"}
+TESTED_VERSIONS = {"modkit": "0.6.1", "dorado": "1.3.0"}
 
 
 class StepError(RuntimeError):
@@ -315,22 +316,22 @@ def parse_args():
     p.add_argument("--sample", required=True, help="sample name: letters, digits, '.', '_' and '-'")
     p.add_argument("--bam", nargs="+", required=True, help="BAM files or folders of BAM files")
     p.add_argument("--out_dir", required=True)
-    p.add_argument("--reference", required=True, help="GRCh37 FASTA with its .fai (hg19_all.fasta)")
+    p.add_argument("--reference", required=True, help="GRCh37 FASTA with its .fai index")
     p.add_argument("--manifest", required=True, help="Illumina's MethylationEPIC v2.0 manifest (CSV)")
-    p.add_argument("--model_dir", required=True, help="the model folder (for example v04_labels)")
+    p.add_argument("--model_dir", required=True, help="the model folder")
     p.add_argument("--panel", default=None, help="stored copy-number reference (scripts/karyotype.py panel)")
     p.add_argument("--no_panel", action="store_true", help="call copy number without a reference, for a first look")
     p.add_argument("--sex", choices=["F", "M"], default=None)
-    p.add_argument("--blast_percent", type=float, default=None)
+    p.add_argument("--blast_percent", type=float, default=None, help="blast percentage, above 0 and at most 100")
     p.add_argument("--threads", type=int, default=8)
     p.add_argument("--aligner", choices=["dorado", "minimap2"], default="dorado",
-                   help="for reads that need aligning (default dorado aligner, as the laboratory's pipeline)")
+                   help="for reads that need aligning (default: dorado aligner)")
     p.add_argument("--samtools", default=None)
     p.add_argument("--modkit", default=None)
     p.add_argument("--dorado", default=None)
     p.add_argument("--minimap2", default=None)
     p.add_argument("--strands", choices=["both", "forward"], default="both",
-                   help="the strands of each CpG behind the model's input: both (default), or forward as MethPipe")
+                   help="the strands of each CpG behind the model's input: both (default), or forward alone")
     p.add_argument("--device", default="cpu", help="for the prediction (default cpu)")
     p.add_argument("--redo", choices=STEPS, default=None, help="run this step and the ones after it again")
     return p.parse_args()
@@ -391,11 +392,11 @@ def main() -> int:
         "versions": versions, "sparsh_version": (REPO / "VERSION").read_text().strip()})
     runner = Runner(out_dir / "run.log")
     runner.note(f"run_sample.py {' '.join(shlex.quote(a) for a in sys.argv[1:])}")
-    for name, wanted in METHPIPE_VERSIONS.items():
+    for name, wanted in TESTED_VERSIONS.items():
         got = versions.get(name)
         if tools.get(name) and got and got != wanted:
-            runner.note(f"{name} {got}; MethPipe runs {wanted}")
-            print(f"Note: {name} {got}; MethPipe runs {wanted}")
+            runner.note(f"{name} {got}; SPARSH was tested with {wanted}")
+            print(f"Note: {name} {got}; SPARSH was tested with {wanted}")
 
     print(f"{args.sample}: {len(cfg['inputs'])} BAM file(s) -> {out_dir}")
     for step in STEPS:

@@ -2,9 +2,9 @@
 # From a modkit bedMethyl file to the one-row CSV that scripts/predict.py reads (scripts/bedmethyl_to_csv.py), on a
 # small manifest in the layout of Illumina's MethylationEPIC v2.0 file: GRCh37 positions taken from MAPINFO_37, the
 # two strands of each CpG added by default (calls of 1 above one half, exact halves left out), also on a compressed
-# pileup; with --strands forward, MethPipe's rules (the forward-strand row alone, 1 from 50% modified up); replicate
-# probes giving columns of one name, chromosome names with and without chr, and the CSV read back with the loader of
-# predict.py.
+# pileup; with --strands forward, the forward-strand rules (the row at the probe's base alone, 1 from 50% modified up);
+# replicate probes giving columns of one name, chromosome names with and without chr, and the CSV read back with
+# the loader of predict.py.
 # A manifest with fewer probe rows than it declares is refused. CPU only, a few seconds. Run from the repository
 # folder:
 #   bash tests/test_bedmethyl.sh

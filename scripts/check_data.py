@@ -129,7 +129,7 @@ def main():
                        "nearest_source": src_k[nn_idx], "r": R[np.arange(len(ids_k)), nn_idx]})
     nn.sort_values("r", ascending=False).to_csv(out / "nearest_neighbour.csv", index=False, float_format="%.4f")
     qs = np.quantile(nn["r"], [0.5, 0.9, 0.99])
-    print(f"\nNearest-neighbour correlation on the {len(top)} most variable CpGs: "
+    print(f"\nNearest-neighbor correlation on the {len(top)} most variable CpGs: "
           f"median {qs[0]:.3f}, 90th pct {qs[1]:.3f}, 99th pct {qs[2]:.3f}, max {nn['r'].max():.3f}")
 
     ii, jj = np.where(np.triu(R >= args.dup_threshold, k=1))

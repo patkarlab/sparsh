@@ -56,12 +56,18 @@ report_file REFERENCE_FASTA "$REFERENCE_FASTA" no
 report_file EPIC_MANIFEST "$EPIC_MANIFEST" no
 report_file "PIPELINE_MODEL (config.json)" "${PIPELINE_MODEL:+$PIPELINE_MODEL/config.json}" no
 report_file CN_PANEL "$CN_PANEL" no
-for t in SAMTOOLS MODKIT DORADO; do
-    path=$(command -v "${!t}" 2>/dev/null)
+for t in SAMTOOLS MODKIT DORADO MINIMAP2; do
+    value=${!t:-$(echo "$t" | tr '[:upper:]' '[:lower:]')}
+    path=$(command -v "$value" 2>/dev/null)
     if [ -n "$path" ]; then
         echo "ok       $t = $path ($("$path" --version 2>&1 | head -1))"
     else
-        echo "note     $t = ${!t} not found$([ $t = DORADO ] && echo '; needed only for reads not yet aligned')"
+        case $t in
+            DORADO) hint="; needed only for reads not yet aligned" ;;
+            MINIMAP2) hint="; needed only with ALIGNER=minimap2" ;;
+            *) hint="" ;;
+        esac
+        echo "note     $t = $value not found$hint"
     fi
 done
 

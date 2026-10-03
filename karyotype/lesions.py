@@ -1,7 +1,7 @@
 """
-Flags for copy-number findings that matter in acute leukaemia, each with a short explanation.
+Flags for copy-number findings that matter in acute leukemia, each with a short explanation.
 
-These restate what the profile shows in the terms a haematopathologist looks
+These restate what the profile shows in the terms a hematopathologist looks
 for; they are not a classification. Structural changes that leave copy number
 unchanged (balanced translocations, inversions) are invisible to this method,
 and small deletions such as those of IKZF1 are usually below its resolution.
@@ -24,7 +24,7 @@ AML_MR_REGIONS = [
     ("loss_13q", "13", "q", "Monosomy 13 or loss of 13q"),
     ("loss_17p", "17", "p", "Loss of 17p (TP53 region) or monosomy 17"),
 ]
-MR_NOTE = ("When found by karyotype, this is among the cytogenetic criteria for acute myeloid leukaemia with "
+MR_NOTE = ("When found by karyotype, this is among the cytogenetic criteria for acute myeloid leukemia with "
            "myelodysplasia-related changes.")
 KARYOTYPE_MB = 5.0                     # smallest segment counted as a change a karyotype can show
 LEVEL_NAME = {1: "haploid", 3: "triploid", 4: "tetraploid"}
@@ -103,7 +103,7 @@ def lesion_flags(result: Dict, sex: str, fit) -> List[Dict[str, str]]:
     if runx1 is not None and runx1 >= 5 and len(levels) >= 3:
         add("iamp21_pattern", f"Chromosome 21 shows {len(levels)} copy-number levels, with {runx1} copies at "
                               "RUNX1: the pattern of intrachromosomal amplification of chromosome 21 (iAMP21). "
-                              "Confirm by fluorescence in situ hybridisation with a RUNX1 probe.")
+                              "Confirm by fluorescence in situ hybridization with a RUNX1 probe.")
     elif runx1 is not None and runx1 >= 5:
         add("runx1_amplified", f"{runx1} copies of the RUNX1 region on 21q22.")
 
@@ -120,7 +120,7 @@ def lesion_flags(result: Dict, sex: str, fit) -> List[Dict[str, str]]:
     only_gains = all(e["type"] == "gain" for e in visible)
     if len(changed) >= 3 and not only_gains:
         add("complex", f"Copy-number changes a karyotype can show (whole chromosomes, arms, or 5 Mb or more) on "
-                       f"{len(changed)} chromosomes{against} ({', '.join(changed)}). In acute myeloid leukaemia a "
+                       f"{len(changed)} chromosomes{against} ({', '.join(changed)}). In acute myeloid leukemia a "
                        "complex karyotype means three or more unrelated abnormalities; balanced changes seen only by "
                        "karyotype also count, and hyperdiploid karyotypes with only trisomies do not.")
     auto_losses = [e for e in losses if e["chrom"] not in ("X", "Y")]
@@ -139,6 +139,6 @@ def lesion_flags(result: Dict, sex: str, fit) -> List[Dict[str, str]]:
     if sex == "XY" and any(e["chrom"] == "Y" and e["type"] == "loss" for e in events):
         add("loss_of_y", "Loss of the Y chromosome, which also occurs in normal blood cells with age.")
     if fit.purity is not None and fit.purity < 0.3:
-        add("low_fraction", f"The leukaemic fraction is estimated at {fit.purity:.0%}: changes present in "
-                            "part of the leukaemic cells may be missed.")
+        add("low_fraction", f"The leukemic fraction is estimated at {fit.purity:.0%}: changes present in "
+                            "part of the leukemic cells may be missed.")
     return out

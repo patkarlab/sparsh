@@ -6,7 +6,7 @@
 # How a run calls the training arrays of classes it was not trained on (scripts/score_excluded.py). CPU only;
 # add "-q <queue>" for your site. Reads the run's training pickle and networks. Submit from the repository
 # folder, for example:
-#   qsub -v RUN_NAME=v04_labels jobs/score_excluded.pbs
+#   qsub -v RUN_NAME=my_model jobs/score_excluded.pbs
 # Results go to $RUNS_DIR/$RUN_NAME/excluded_check. EXTRA_ARGS="..." passes further options, e.g.
 #   EXTRA_ARGS="--prefixes AML_NOS B-ALL_NOS --output_dir <folder>"
 

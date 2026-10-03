@@ -106,7 +106,7 @@ def parse_args():
     p.add_argument("--no_pruning", action="store_true")
     p.add_argument("--sampler_seed", type=int, default=None, help="TPE seed (default: random, so parallel jobs differ)")
     p.add_argument("--device", default="cuda")
-    p.add_argument("--report", action="store_true", help="Summarise the study; train nothing")
+    p.add_argument("--report", action="store_true", help="Summarize the study; train nothing")
     p.add_argument("--score_runs", nargs="+", default=None, help="Score finished training runs; train nothing")
     return p.parse_args()
 

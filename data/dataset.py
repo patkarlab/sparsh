@@ -61,7 +61,7 @@ def apply_label_map(labels: Sequence[str], label_map: Dict[str, str], log: bool 
             if n:
                 logger.info(f"  label map: {raw!r} -> {merged!r} ({n} samples)")
             else:
-                logger.warning(f"  label map: no sample is labelled {raw!r} (check the spelling)")
+                logger.warning(f"  label map: no sample is labeled {raw!r} (check the spelling)")
     return mapped
 
 

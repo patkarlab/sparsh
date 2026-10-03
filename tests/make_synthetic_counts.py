@@ -3,7 +3,7 @@
 Synthetic read counts for the copy-number tests: a cohort in the format of `scripts/karyotype.py count`.
 
 Every sample gets its own GC bias, every 100 kb bin a mappability factor shared by all samples (as the
-library chemistry and aligner would give), and Poisson counting noise. A background cohort of leukaemia-like
+library chemistry and aligner would give), and Poisson counting noise. A background cohort of leukemia-like
 samples with a few random changes provides the reference; the named cases below have known answers.
 
     python tests/make_synthetic_counts.py --out_dir /tmp/counts

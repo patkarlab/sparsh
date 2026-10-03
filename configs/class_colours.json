@@ -1,5 +1,5 @@
 {
-  "description": "Colours used for classes and lineages in the per-case reports. Keys are internal class names (the names in the training data and the model folder); the names shown come from configs/display_names.json. Classes are listed by lineage. A class missing from this file is drawn in the colour of its lineage.",
+  "description": "Colors used for classes and lineages in the per-case reports. Keys are internal class names (the names in the training data and the model folder); the names shown come from configs/display_names.json. Classes are listed by lineage. A class missing from this file is drawn in the color of its lineage.",
   "lineages": {
     "AML": "#c0392b",
     "Ambiguous lineage": "#2a9d8f",

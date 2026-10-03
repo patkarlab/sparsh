@@ -25,8 +25,8 @@ Written into each run folder, under hierarchy_report/:
                                    whether they share a family or lineage: the evidence
                                    for refining the families
 The per-class and pair tables use --detail_condition. Default: the binary
-condition nearest 5% coverage, because real nanopore samples confuse classes
-the way simulated data at much lower coverage do. Runs with different class sets (for example with AML-MR and
+condition nearest 5% coverage, chosen low because sparse samples show the
+confusions most clearly. Runs with different class sets (for example with AML-MR and
 AML_MECOM-r dropped or grouped) are compared class by class in by_class_*.csv.
 """
 

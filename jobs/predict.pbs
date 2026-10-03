@@ -5,8 +5,9 @@
 #PBS -j oe
 # Classify nanopore samples with a trained run (scripts/predict.py; docs/NANOPORE.md). CPU only; add
 # "-q <queue>" for your site. Submit from the repository folder, for example:
-#   qsub -v RUN_NAME=v04_labels,ONT_DIR=/path/to/sample_csvs jobs/predict.pbs
-# Results go to $RUNS_DIR/$RUN_NAME/ont_eval (a new folder inside the run); EVAL_NAME=... changes its name.
+#   qsub -v RUN_NAME=sparsh_model_0.4.0,ONT_DIR=/path/to/sample_csvs jobs/predict.pbs
+# RUN_NAME is a model folder in $RUNS_DIR. Results go to $RUNS_DIR/predictions/$RUN_NAME/ont_eval, outside the model
+# folder, which stays as it was archived; EVAL_NAME=... changes the last part, and OUT_DIR=... sets the whole path.
 # TRUTH=/path/to/truth.csv scores the predictions against known labels. EXTRA_ARGS="..." passes further
 # scripts/predict.py options, e.g. "--duplicate_probes first".
 
@@ -22,6 +23,6 @@ require_file "run" "$RUNS_DIR/${RUN_NAME:?Set RUN_NAME}/config.json" "No finishe
 python scripts/predict.py \
   --model_dir "$RUNS_DIR/$RUN_NAME" \
   --ont_dir "${ONT_DIR:?Set ONT_DIR}" \
-  --output_dir "$RUNS_DIR/$RUN_NAME/${EVAL_NAME:-ont_eval}" \
+  --output_dir "${OUT_DIR:-$RUNS_DIR/predictions/$RUN_NAME/${EVAL_NAME:-ont_eval}}" \
   ${TRUTH:+--ground_truth "$TRUTH"} \
   ${EXTRA_ARGS:-}

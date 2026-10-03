@@ -6,7 +6,7 @@ A condition is one way of presenting the outer-fold samples to a model:
   <sim>_<f>                     simulation <sim> at observed fraction f, e.g. binary_0.30
   <sim>-err<pct>_<f>            the same with a per-read call error of <pct> percent,
                                 e.g. binary-err10_0.30 (see models/corruption.py)
-  <sim>-blast<pct>_<f>          leukaemia samples diluted with normal marrow to <pct>
+  <sim>-blast<pct>_<f>          leukemia samples diluted with normal marrow to <pct>
                                 percent blasts before the reads are simulated, e.g.
                                 binary-blast30_0.30 (see models/dilution.py)
   <sim>-err<pct>-blast<pct>_<f> both

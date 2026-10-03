@@ -9,8 +9,8 @@ repeat on each part. Significance is judged against the largest of all the
 arc statistics that pure noise would give, by a Bonferroni bound over the
 number of arcs at a level of 0.001, so long chromosomes are not split more
 easily than short ones and a genome of 24 chromosomes rarely gains a false
-breakpoint. Single outlying bins are first pulled towards their neighbours, and
-neighbouring segments that turn out not to differ are merged again.
+breakpoint. Single outlying bins are first pulled toward their neighbors, and
+neighboring segments that turn out not to differ are merged again.
 """
 
 from typing import List, Tuple
@@ -23,7 +23,7 @@ from .genome import CHROMOSOMES
 
 
 def smooth_outliers(x: np.ndarray, sigma: float, width: int = 2, limit: float = 4.0) -> np.ndarray:
-    """Pull bins lying more than `limit` noise units from the median of their neighbours back to that limit."""
+    """Pull bins lying more than `limit` noise units from the median of their neighbors back to that limit."""
     if len(x) < 2 * width + 1 or not np.isfinite(sigma) or sigma <= 0:
         return x.copy()
     out = x.copy()
@@ -81,7 +81,7 @@ def cbs(x: np.ndarray, sigma: float, alpha: float = 0.001, min_size: int = 2) ->
 
 def merge_similar(x: np.ndarray, bounds: List[Tuple[int, int]], sigma: float,
                   z_merge: float = 3.0, min_shift: float = 0.08) -> List[Tuple[int, int]]:
-    """Merge neighbouring segments whose means do not differ significantly or by a meaningful amount."""
+    """Merge neighboring segments whose means do not differ significantly or by a meaningful amount."""
     bounds = list(bounds)
     while len(bounds) > 1:
         scores = []

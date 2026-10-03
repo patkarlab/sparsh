@@ -1,10 +1,10 @@
 """
 Copy-number calls in the vocabulary of cytogenetics: events, an ISCN description, a karyotype line, ploidy
-class and flags for lesions that matter in acute leukaemia.
+class and flags for lesions that matter in acute leukemia.
 
 Events
-    A chromosome whose copy number is the same over at least 90% of its analysed length is called whole
-    (on the acrocentric chromosomes 13, 14, 15, 21 and 22 only the long arm is analysed). Otherwise each arm
+    A chromosome whose copy number is the same over at least 90% of its analyzed length is called whole
+    (on the acrocentric chromosomes 13, 14, 15, 21 and 22 only the long arm is analyzed). Otherwise each arm
     that is uniform over 90% of its length is called at arm level, and any other stretch that differs from
     its chromosome or arm is a segmental event.
 
@@ -24,7 +24,7 @@ ISCN
 Karyotype line
     The number of chromosomes and the whole-chromosome gains and losses, as a karyotype would give them,
     for example 55,XX,+X,+4,+6,+10,+14,+17,+18,+21,+21. The line is written against the ploidy level of
-    the ploidy class, as acute leukaemias are usually described: near-haploid genomes (up to 30 chromosomes)
+    the ploidy class, as acute leukemias are usually described: near-haploid genomes (up to 30 chromosomes)
     against the haploid level, with <1n>, near-triploid genomes (68 to 79) against the triploid level, with
     <3n>, near-tetraploid genomes (80 or more) against the tetraploid level, with <4n>, and everything from
     31 to 67 chromosomes, hypodiploid and high hyperdiploid genomes included, against the diploid level.
@@ -82,9 +82,9 @@ def ploidy_class(n: int) -> str:
 def ploidy_level(n: int) -> int:
     """
     Ploidy level a karyotype of n chromosomes is written against: that of its ploidy class (see ploidy_class), so
-    that a high hyperdiploid leukaemia of up to 67 chromosomes is written with gains against the diploid level.
+    that a high hyperdiploid leukemia of up to 67 chromosomes is written with gains against the diploid level.
     ISCN's own ranges (up to 34, 35 to 57, 58 to 80, 81 or more) would write 58 to 67 chromosomes against the
-    triploid level, as losses, which is not how high hyperdiploid leukaemia is read.
+    triploid level, as losses, which is not how high hyperdiploid leukemia is read.
     """
     if n <= 30:
         return 1
@@ -277,9 +277,9 @@ def describe(seg: pd.DataFrame, fit, sex: str, bins, log_ratio: np.ndarray, band
 def arm_table(seg: pd.DataFrame, copies: np.ndarray, sex: str, bins, log_ratio: np.ndarray, bands) -> List[dict]:
     """
     Every chromosome arm, as arm-level copy-number reports give it: the copy number covering most of the
-    arm's analysed length, the share of that length it covers (so a change of part of an arm shows as partial),
+    arm's analyzed length, the share of that length it covers (so a change of part of an arm shows as partial),
     the mean log2 ratio of those bins, and whether that copy number is a gain or a loss against the normal
-    copies of the chromosome. Arms without analysed bins (the short arms of the acrocentric chromosomes, and Y in
+    copies of the chromosome. Arms without analyzed bins (the short arms of the acrocentric chromosomes, and Y in
     a woman) are left out.
     """
     finite = np.isfinite(log_ratio)

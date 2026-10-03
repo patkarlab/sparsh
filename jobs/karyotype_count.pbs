@@ -3,10 +3,13 @@
 #PBS -l select=1:ncpus=8:mem=16gb
 #PBS -l walltime=24:00:00
 #PBS -j oe
-# Read counting for the copy-number karyotype as a batch job, for nodes that can reach the object store.
+# Read counting for the copy-number karyotype as a batch job, for nodes that can reach the BAM files or the object
+# store that holds them.
 # Submit from the repository folder:
 #   qsub -v MANIFEST=/path/to/manifest.tsv,OUT_DIR=/path/to/counts,PARALLEL=3 jobs/karyotype_count.pbs
-# FETCH, SAMTOOLS, BUILD, MIN_MAPQ and BIN_SIZE can be passed the same way (see jobs/karyotype_count.sh).
+# PARALLEL, the number of samples streamed at the same time, is 3 by default in this job (2 in
+# jobs/karyotype_count.sh run by hand). FETCH, SAMTOOLS, BUILD, MIN_MAPQ and BIN_SIZE can be passed the same way
+# (see jobs/karyotype_count.sh).
 # Samples already counted are skipped, so a job that reaches its walltime can simply be submitted again.
 
 set -eo pipefail
