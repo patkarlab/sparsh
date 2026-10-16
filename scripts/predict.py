@@ -21,9 +21,13 @@ errors in the overall accuracy, never dropped silently.
 
 Reported call: besides the top class, every sample gets the most specific call
 that reaches the threshold (subtype, family or lineage; see
-evaluation/hierarchy.py and configs/class_hierarchy.json). The hierarchy file
-used is copied into the output folder. "callable" keeps its meaning (the top
-class reaches the threshold); "reported_level" shows the fallback.
+evaluation/hierarchy.py and configs/class_hierarchy.json). Between the two, a
+top class that reaches the lower caution threshold (--caution_threshold, 0.80 by
+default) is reported as a provisional subtype, to be confirmed by other tests,
+when no family reaches the threshold; --caution_threshold 0 switches this off
+and gives the calls of SPARSH 1.0.0. The hierarchy file used is copied into the
+output folder. "callable" keeps its meaning (the top class reaches the
+threshold); "reported_level" shows the level reported.
 
 Class names: outputs show the names in configs/display_names.json (for example
 T-ALL_HOXA_ETP for the internal class T-ALL_HOXA9_ETP; see evaluation/display.py).
@@ -57,8 +61,8 @@ from data.dataset import apply_label_map  # noqa: E402
 from data.ont import DUPLICATE_RULES, read_ont_csv  # noqa: E402
 from evaluation.display import (default_display_path, internal_names, load_display_names, show,  # noqa: E402
                                 show_columns)
-from evaluation.hierarchy import (default_hierarchy_path, hierarchical_calls, load_hierarchy,  # noqa: E402
-                                  score_calls, summarize_calls)
+from evaluation.hierarchy import (LEVELS, default_hierarchy_path, hierarchical_calls,  # noqa: E402
+                                  load_hierarchy, resolve_caution, score_calls, summarize_calls)
 from evaluation.metrics import balanced_accuracy, confusion_frame, expected_calibration_error  # noqa: E402
 from models.ensemble import ensemble_probs, load_models, load_run  # noqa: E402
 
@@ -89,6 +93,10 @@ def parse_args():
     p.add_argument("--use", choices=["auto", "ensemble", "final"], default="auto",
                    help="auto = fold ensemble if saved, otherwise the final model")
     p.add_argument("--threshold", type=float, default=None, help="Default: the value stored with the model")
+    p.add_argument("--caution_threshold", type=float, default=None,
+                   help="A top class from this value up to the threshold is reported as a provisional subtype when "
+                        "no family reaches the threshold (default 0.80 when below the threshold; 0 = off, as in "
+                        "SPARSH 1.0.0)")
     p.add_argument("--min_coverage", type=float, default=0.01,
                    help="Samples with fewer observed CpGs (fraction) are marked not callable")
     p.add_argument("--duplicate_probes", choices=DUPLICATE_RULES, default="mean",
@@ -102,6 +110,17 @@ def parse_args():
                         "internal class names). Computation always uses the internal names")
     p.add_argument("--device", default="cuda")
     return p.parse_args()
+
+
+def caution_metrics(d: pd.DataFrame, on: bool) -> dict:
+    """Share and accuracy (of the top class) from the caution threshold up to the threshold, and from it upward."""
+    if not on or not len(d):
+        return {}
+    band, upward = d["caution_band"], d["callable_at_caution"]
+    return {"caution_band_share": float(band.mean()),
+            "caution_band_accuracy": float(d.loc[band, "correct"].mean()) if band.any() else None,
+            "callable_share_at_caution": float(upward.mean()),
+            "accuracy_callable_at_caution": float(d.loc[upward, "correct"].mean()) if upward.any() else None}
 
 
 def coverage_bin(c: float) -> str:
@@ -138,6 +157,12 @@ def main():
     if display:
         print("Shown as: " + "; ".join(f"{k} -> {v}" for k, v in display.items()))
     threshold = args.threshold if args.threshold is not None else config["inference"].get("threshold", 0.90)
+    try:
+        caution = resolve_caution(threshold, args.caution_threshold)
+    except ValueError as e:
+        sys.exit(str(e))
+    print(f"Threshold {threshold:.2f}; " + (f"provisional subtypes from {caution:.2f}" if caution is not None
+                                            else "no provisional subtypes"))
     clip = config["inference"].get("clip_observed")
     use, models = load_models(model_dir, config, args.use, device)
     print(f"Model: {model_dir} ({use}, {len(models)} network(s), {len(cpg_ids)} CpGs, {len(classes)} classes)")
@@ -199,14 +224,15 @@ def main():
     enough = meta["coverage_pct"] >= 100.0 * args.min_coverage
     meta["callable"] = enough & (meta["confidence"] >= threshold)
     meta["note"] = np.where(enough, "", f"coverage below {100 * args.min_coverage:.1f}%")
-    calls = hierarchical_calls(probs, classes, hierarchy, threshold, enough.to_numpy())
+    calls = hierarchical_calls(probs, classes, hierarchy, threshold, enough.to_numpy(), caution_threshold=caution)
     meta = pd.concat([meta, calls], axis=1)
     prob_df = pd.DataFrame(probs, columns=[f"prob_{show(c, display)}" for c in classes])
     pd.concat([show_columns(meta, display), prob_df], axis=1).to_csv(out / "predictions.csv", index=False,
                                                                       float_format="%.5f")
     run_info = {
         "model_dir": str(model_dir.resolve()), "model_name": model_dir.resolve().name, "models_used": use,
-        "n_networks": len(models), "threshold": threshold, "min_coverage": args.min_coverage,
+        "n_networks": len(models), "threshold": threshold, "caution_threshold": caution,
+        "min_coverage": args.min_coverage,
         "n_classes": len(classes), "n_cpgs": len(cpg_ids), "sparsh_version": VERSION,
         "created": datetime.now().astimezone().isoformat(timespec="seconds"),
         "hierarchy_file": str(Path(hierarchy_path).resolve()) if hierarchy_path else None,
@@ -222,7 +248,7 @@ def main():
           f"{meta['coverage_pct'].max():.1f}%); callable at >= {threshold:.2f}: {int(meta['callable'].sum())}")
     levels = meta["reported_level"].value_counts()
     print("Reported at: " + ", ".join(f"{lev} {int(levels.get(lev, 0))}"
-                                      for lev in ("subtype", "no_subtype", "family", "lineage", "none")))
+                                      for lev in LEVELS if lev != "provisional" or caution is not None))
 
     if not args.ground_truth:
         return
@@ -250,6 +276,10 @@ def main():
     ev["correct"] = ev["prediction"] == ev["true_label"]
     ev["top2_correct"] = ev["correct"] | (ev["top2_class"] == ev["true_label"])
     ev["coverage_bin"] = [coverage_bin(c / 100.0) for c in ev["coverage_pct"]]
+    if caution is not None:      # the top class from the caution threshold up to the threshold (coverage permitting)
+        enough_ev = ev["coverage_pct"] >= 100.0 * args.min_coverage
+        ev["caution_band"] = enough_ev & (ev["confidence"] >= caution) & (ev["confidence"] < threshold)
+        ev["callable_at_caution"] = enough_ev & (ev["confidence"] >= caution)
     scored = score_calls(ev["true_label"], ev["prediction"], ev, hierarchy)
     ev["reported_correct"] = scored["reported_correct"].to_numpy()
     ev["lineage_correct"] = scored["lineage_correct"].to_numpy()
@@ -259,7 +289,7 @@ def main():
     y_true = ins["true_label"].map({c: i for i, c in enumerate(classes)}).to_numpy()
     y_pred = ins["prediction"].map({c: i for i, c in enumerate(classes)}).to_numpy()
     summary = json_safe({
-        "model_dir": str(model_dir), "models_used": use, "threshold": threshold,
+        "model_dir": str(model_dir), "models_used": use, "threshold": threshold, "caution_threshold": caution,
         "duplicate_probes": args.duplicate_probes,
         "display_names": {"file": str(display_path) if display_path else None, "shown": display},
         "n_predicted": int(len(meta)), "n_unreadable": len(errors),
@@ -270,6 +300,7 @@ def main():
             "accuracy_out_of_scheme_counted_wrong": float(ev["correct"].mean()),
             "callable_share": float(ev["callable"].mean()),
             "accuracy_callable": float(ev.loc[ev["callable"], "correct"].mean()) if ev["callable"].any() else None,
+            **caution_metrics(ev, caution is not None),
         },
         "in_scheme": {
             "n": int(len(ins)),
@@ -278,6 +309,7 @@ def main():
             "top2_accuracy": float(ins["top2_correct"].mean()) if len(ins) else None,
             "callable_share": float(ins["callable"].mean()) if len(ins) else None,
             "accuracy_callable": float(ins.loc[ins["callable"], "correct"].mean()) if ins["callable"].any() else None,
+            **caution_metrics(ins, caution is not None),
             "ece": expected_calibration_error(ins["confidence"].to_numpy(), ins["correct"].to_numpy()) if len(ins) else None,
         },
         "reported_call": {
@@ -290,6 +322,11 @@ def main():
         n=("sample", "size"), accuracy=("correct", "mean"), top2_accuracy=("top2_correct", "mean"),
         callable_share=("callable", "mean"))
     by_cov["accuracy_callable"] = ev[ev["callable"]].groupby("coverage_bin")["correct"].mean()
+    if caution is not None:
+        by_cov["caution_band_share"] = ev.groupby("coverage_bin")["caution_band"].mean()
+        by_cov["caution_band_accuracy"] = ev[ev["caution_band"]].groupby("coverage_bin")["correct"].mean()
+        by_cov["callable_share_at_caution"] = ev.groupby("coverage_bin")["callable_at_caution"].mean()
+        by_cov["accuracy_callable_at_caution"] = ev[ev["callable_at_caution"]].groupby("coverage_bin")["correct"].mean()
     bands = [coverage_bin(lo) for lo in COVERAGE_BINS[:-1]]              # lowest coverage first, not alphabetical
     by_cov = by_cov.reindex([b for b in bands if b in by_cov.index] + sorted(set(by_cov.index) - set(bands)))
     by_cov.to_csv(out / "evaluation_by_coverage.csv", float_format="%.3f")

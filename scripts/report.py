@@ -33,6 +33,9 @@ Inputs
                      is shown, missing keys are left out.
   --threshold        reporting threshold (default: the prediction run's, else 0.90). Another value recomputes the
                      reported calls from the class probabilities (see report/inputs.py).
+  --caution_threshold  provisional subtypes from this value up to the threshold (default: the prediction run's,
+                     none for predictions made before SPARSH 1.1.0; 0 = none). Another value also recomputes the
+                     reported calls.
 
 Class names are shown as in predictions.csv (configs/display_names.json); colors come from
 configs/class_colours.json. The reports are for research use only and say so on every page.
@@ -47,6 +50,7 @@ sys.path.insert(0, str(REPO))
 
 from report import ReportInputError, load_inputs, write_report  # noqa: E402
 from report.inputs import DEFAULT_INTERPRETATION  # noqa: E402
+from evaluation.hierarchy import LEVELS  # noqa: E402
 
 
 def parse_args():
@@ -63,6 +67,12 @@ def parse_args():
     p.add_argument("--title", default=None, help="Report title (default: SPARSH methylation classification report)")
     p.add_argument("--threshold", type=float, default=None,
                    help="Reporting threshold (default: the prediction run's, else 0.90)")
+    p.add_argument("--caution_threshold", type=float, default=None,
+                   help="Provisional subtypes from this value up to the threshold (default: the prediction run's; "
+                        "0 = none)")
+    p.add_argument("--caution_bands", default=None,
+                   help="Cross-validation figures of provisional calls (default configs/cv_caution_bands.csv, "
+                        "written by scripts/threshold_analysis.py)")
     return p.parse_args()
 
 
@@ -79,7 +89,8 @@ def main():
         ctx, cases = load_inputs(args.predictions_dir, model_dir=args.model_dir, interpretation=args.interpretation,
                                  sample_sheet=args.sample_sheet, karyotype_dir=args.karyotype_dir,
                                  samples=args.samples, title=args.title.strip() if args.title else None,
-                                 threshold=args.threshold)
+                                 threshold=args.threshold, caution_threshold=args.caution_threshold,
+                                 caution_bands=args.caution_bands)
     except ReportInputError as e:
         sys.exit(f"Error: {e}")
     out.mkdir(parents=True, exist_ok=True)
@@ -90,9 +101,10 @@ def main():
         levels[r.level] = levels.get(r.level, 0) + 1
     print(f"Model: {ctx.model.name or 'folder not recorded'} ({ctx.model.n_classes} classes); reporting threshold "
           f"{ctx.threshold:.2f}"
+          + (f", provisional subtypes from {ctx.caution_threshold:.2f}" if ctx.caution_threshold is not None else "")
           + ("" if ctx.cv is not None else "; no cross-validation tables, that section is left out"))
-    print(f"Reports for {len(cases)} samples: " + ", ".join(
-        f"{lev} {levels.get(lev, 0)}" for lev in ("subtype", "no_subtype", "family", "lineage", "none")))
+    shown = [lev for lev in LEVELS if lev != "provisional" or ctx.caution_threshold is not None]
+    print(f"Reports for {len(cases)} samples: " + ", ".join(f"{lev} {levels.get(lev, 0)}" for lev in shown))
     with_kt = sum(1 for c in cases if c.karyotype is not None)
     if ctx.has_karyotypes:
         print(f"Copy-number karyotypes shown for {with_kt} sample(s)")

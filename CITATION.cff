@@ -78,7 +78,7 @@ contact:
   - family-names: Patkar
     given-names: Nikhil
     affiliation: "Department of Haematopathology and Cytogenetics, ACTREC, Tata Memorial Centre, Navi Mumbai, India"
-version: 1.0.0
+version: 1.1.0
 license: MIT
 repository-code: "https://github.com/patkarlab/sparsh"
 keywords:

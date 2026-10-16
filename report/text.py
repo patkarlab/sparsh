@@ -19,9 +19,9 @@ import numpy as np
 from .inputs import LOW_COVERAGE, NORMAL_CLASS, NORMAL_LINEAGE, Case, Context
 
 LEVEL_NAMES = {"subtype": "Subtype", "no_subtype": "Lineage, no specific subtype", "family": "Family",
-               "lineage": "Lineage", "none": "Not reported"}
+               "provisional": "Provisional subtype", "lineage": "Lineage", "none": "Not reported"}
 LEVEL_COUNTS = {"subtype": "subtype", "no_subtype": "lineage without a specific subtype", "family": "family",
-                "lineage": "lineage", "none": "not reported"}
+                "provisional": "provisional subtype", "lineage": "lineage", "none": "not reported"}
 DUPLICATE_RULES = {"mean": "mean of the copies with a value", "majority": "majority of the copies with a value",
                    "first": "first column only",
                    "error": "files with repeated probes refused"}
@@ -172,7 +172,18 @@ def describe_result(case: Case, ctx: Context) -> Result:
         result_note = ("Classes: " + ", ".join(ctx.shown(m) for m in members)) if members else ""
         confidence = case.family_prob
         level_text = "Reported at family level: no single subtype reached the threshold."
-        most_likely = f"Most likely class: {top} ({top_p}), below the reporting threshold of {ts}."
+        if case.top in members:
+            most_likely = f"Most likely member of the family: {top} ({top_p}), below the reporting threshold of {ts}."
+        else:
+            most_likely = f"Most likely class: {top} ({top_p}), below the reporting threshold of {ts}."
+    elif level == "provisional":
+        cs = fmt_threshold(ctx.caution_threshold) if ctx.caution_threshold is not None else "the caution threshold"
+        lineage = h.lineage_of[case.top]
+        result, result_name = top, entry.get("name", "")
+        result_note = "Provisional: to be confirmed by other tests"
+        confidence, result_class = case.confidence, case.top
+        level_text = (f"Reported as a provisional subtype: the most probable class reached {cs} but not the "
+                      f"reporting threshold of {ts}, and no family of related subtypes reached {ts}.")
     elif level == "lineage":
         lineage = case.lineage
         result, result_note = f"{lineage}, subtype undetermined", ""
@@ -195,7 +206,10 @@ def describe_result(case: Case, ctx: Context) -> Result:
             level_text = "Not reported: no subtype, family of subtypes or lineage reached the threshold."
             most_likely = f"Most likely class: {top} ({top_p}), below the reporting threshold of {ts}."
 
-    if confidence is not None:
+    if confidence is not None and level == "provisional":
+        confidence_text = (f"{fmt_prob(confidence, t)} (provisional range "
+                           f"{fmt_threshold(ctx.caution_threshold)} to {ts})")
+    elif confidence is not None:
         confidence_text = f"{fmt_prob(confidence, t)} {threshold_text}"
     elif not case.coverage_ok:
         confidence_text = "Not assessed"
@@ -216,7 +230,9 @@ def describe_result(case: Case, ctx: Context) -> Result:
     flags = []
     if case.coverage_pct < 100.0 * LOW_COVERAGE:
         flags.append("low coverage")
-    if case.coverage_ok and case.confidence < t:
+    if level == "provisional":
+        flags.append("provisional")
+    elif case.coverage_ok and case.confidence < t:
         flags.append("below threshold")
     if level == "none":
         flags.append("not callable")
@@ -257,8 +273,10 @@ def interpret(case: Case, res: Result, ctx: Context) -> Interpretation:
     h = ctx.hierarchy
     t = fmt_threshold(ctx.threshold)
     confirm = note = ""
-    if case.level == "subtype":
+    if case.level in ("subtype", "provisional"):
         heading, summary, confirm, note = _class_text(ctx, case.top)
+        if case.level == "provisional":
+            heading = f"Provisional: {heading}"
         paragraphs = [summary]
     elif case.level == "no_subtype":
         if case.top in text["classes"]:
@@ -311,7 +329,13 @@ def interpret(case: Case, res: Result, ctx: Context) -> Interpretation:
             caveats.append(f"{observed} This is below {fmt_fraction(LOW_COVERAGE)}, a low coverage for the model"
                            f"{caution}; the evidence from cross-validation below describes how the model performed at "
                            "a similar coverage.")
-    if case.coverage_ok and case.confidence < ctx.threshold:
+    if case.level == "provisional":
+        cs = fmt_threshold(ctx.caution_threshold) if ctx.caution_threshold is not None else "the caution threshold"
+        caveats.append(f"This is a provisional result. The probability of {ctx.shown(case.top)}, "
+                       f"{fmt_prob(case.confidence, ctx.threshold)}, reached {cs} but not the reporting threshold of "
+                       f"{t}. In cross-validation such calls were correct less often than calls at or above {t}, so "
+                       "the subtype must be confirmed by established methods before it is used.")
+    elif case.coverage_ok and case.confidence < ctx.threshold:
         caveats.append(f"The most probable class, {ctx.shown(case.top)}, has a probability of "
                        f"{fmt_prob(case.confidence, ctx.threshold)}, below the reporting threshold of {t}. It is "
                        "indicative only and is not a result.")
@@ -326,8 +350,9 @@ def interpret(case: Case, res: Result, ctx: Context) -> Interpretation:
         caveats.append(f"The subtype could not be resolved. The probability is spread over several classes, and "
                        f"only the summed probability of the {case.lineage} lineage reached the threshold; the "
                        "subtype has to be established by other methods.")
-    reported_normal = ((case.level == "subtype" and case.top == NORMAL_CLASS)
-                       or (case.level in ("subtype", "no_subtype", "lineage") and res.lineage == NORMAL_LINEAGE))
+    reported_normal = ((case.level in ("subtype", "provisional") and case.top == NORMAL_CLASS)
+                       or (case.level in ("subtype", "no_subtype", "provisional", "lineage")
+                           and res.lineage == NORMAL_LINEAGE))
     if reported_normal:
         caveats.append("No leukemia methylation profile was detected. If leukemia is suspected, consider a low "
                        "blast percentage in the sequenced sample, a problem with the sample such as an aspirate "
@@ -386,6 +411,17 @@ def cv_evidence(case: Case, res: Result, ctx: Context) -> Optional[Evidence]:
     else:
         first = opening + f"the share of arrays called at the threshold of {t} was not recorded."
     sentences = [first]
+    if case.level == "provisional" and ctx.caution_threshold is not None:
+        cs = fmt_threshold(ctx.caution_threshold)
+        band = cv.bands.loc[cond] if cv.bands is not None and cond in cv.bands.index else None
+        b_share = float(band["band_share"]) if band is not None else np.nan
+        b_acc = float(band["band_accuracy"]) if band is not None else np.nan
+        if np.isfinite(b_share) and np.isfinite(b_acc) and b_share > 0:
+            sentences.append(f"For {fmt_fraction(b_share)} of the arrays the most probable class lay from {cs} up to "
+                             f"{t}, as in this sample, and {fmt_fraction(b_acc)} of those calls were correct.")
+        else:
+            sentences.append(f"How often calls from {cs} up to {t} were correct at that coverage is not recorded for "
+                             "this model.")
     if res.result_class is not None and cv.recall is not None and res.result_class in cv.recall.index \
             and cond in cv.recall.columns:
         recall = cv.recall.at[res.result_class, cond]
@@ -452,7 +488,20 @@ def about_text(ctx: Context) -> List[str]:
             held_out = ", calibrated on training arrays held out from their training"
         sentences.append(f"{source}{held_out}, so that on training arrays a probability approximates how often such "
                          "a call is correct.")
-    if ctx.hierarchy.families:
+    if ctx.hierarchy.families and ctx.caution_threshold is not None:
+        cs = fmt_threshold(ctx.caution_threshold)
+        sentences.append(f"A result is reported at the most specific level that reaches the threshold of {t}: a "
+                         "single subtype, then a family of related subtypes, using the summed probability of the "
+                         f"family's classes. Failing both, a subtype whose probability reaches {cs} is reported as "
+                         "provisional, to be confirmed by other tests, and otherwise a lineage whose summed "
+                         f"probability reaches {t}; when none of these applies, no result is reported.")
+    elif ctx.caution_threshold is not None:
+        cs = fmt_threshold(ctx.caution_threshold)
+        sentences.append(f"A result is reported as a single subtype when its probability reaches the threshold of "
+                         f"{t}. Failing that, a subtype whose probability reaches {cs} is reported as provisional, "
+                         f"to be confirmed by other tests, and otherwise a lineage whose summed probability reaches "
+                         f"{t}; when none of these applies, no result is reported.")
+    elif ctx.hierarchy.families:
         sentences.append(f"A result is reported at the most specific level that reaches the threshold of {t}: a "
                          "single subtype, then a family of related subtypes, then a lineage, using the summed "
                          "probabilities of the family's or lineage's classes; when none reaches it, no result is "

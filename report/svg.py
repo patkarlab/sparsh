@@ -15,7 +15,7 @@ halo so that it stays legible where it crosses the dashed threshold line; the ax
 
 import re
 from html import escape
-from typing import List, Sequence, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 WIDTH = 680
 FONT_SIZE = 12.5
@@ -94,10 +94,12 @@ def _text(x: float, y: float, content: str, size: float = FONT_SIZE, anchor: str
 
 
 def probability_chart(rows: Sequence[Tuple[str, float, str, str]], threshold: float, threshold_label: str,
-                      title: str) -> str:
+                      title: str, caution: Optional[float] = None, caution_label: str = "") -> str:
     """
     Horizontal bar chart. rows: (class name shown, probability, color, probability as text), most probable first.
     threshold_label is the text of the threshold line ("Threshold 0.90"); title names the chart for screen readers.
+    caution, when given, adds a dotted line at the caution threshold, labelled caution_label to its left, and the
+    threshold label then stands to the right of its line.
     """
     wrapped = [wrap_label(name, LABEL_MAX) for name, _, _, _ in rows]
     label_w = max([text_width(line) for lines in wrapped for line in lines] + [40.0])
@@ -118,7 +120,8 @@ def probability_chart(rows: Sequence[Tuple[str, float, str, str]], threshold: fl
            'overflow="visible">',
            f'<title id="chart-title">{escape(title)}</title>',
            '<desc id="chart-desc">' + escape("; ".join(f"{name}: {text}" for name, _, _, text in rows)
-                                              + f". {threshold_label}.") + "</desc>"]
+                                              + f". {threshold_label}."
+                                              + (f" {caution_label}." if caution is not None else "")) + "</desc>"]
     for tick in (0.0, 0.25, 0.5, 0.75, 1.0):
         x = round(x_of(tick)) + 0.5
         out.append(f'<line x1="{_num(x)}" y1="{top - 4}" x2="{_num(x)}" y2="{_num(bottom)}" stroke="{GRID}" '
@@ -146,10 +149,19 @@ def probability_chart(rows: Sequence[Tuple[str, float, str, str]], threshold: fl
     tx = round(x_of(threshold)) + 0.5
     out.append(f'<line x1="{_num(tx)}" y1="{top - 8}" x2="{_num(tx)}" y2="{_num(bottom)}" stroke="{THRESHOLD}" '
                'stroke-width="1.2" stroke-dasharray="4 3"/>')
-    anchor, lx = "middle", tx
-    half = text_width(threshold_label, SMALL_SIZE) / 2
-    if tx + half > WIDTH - 2:
-        anchor, lx = "end", WIDTH - 2
+    if caution is None:
+        anchor, lx = "middle", tx
+        half = text_width(threshold_label, SMALL_SIZE) / 2
+        if tx + half > WIDTH - 2:
+            anchor, lx = "end", WIDTH - 2
+    else:
+        cx = round(x_of(caution)) + 0.5
+        out.append(f'<line x1="{_num(cx)}" y1="{top - 8}" x2="{_num(cx)}" y2="{_num(bottom)}" stroke="{MUTED}" '
+                   'stroke-width="1.2" stroke-dasharray="1.5 2.5"/>')
+        out.append(_text(cx - 4, top - 12, caution_label, SMALL_SIZE, "end", MUTED))
+        anchor, lx = "start", tx + 4
+        if lx + text_width(threshold_label, SMALL_SIZE) > WIDTH - 2:
+            anchor, lx = "end", WIDTH - 2
     out.append(_text(lx, top - 12, threshold_label, SMALL_SIZE, anchor, THRESHOLD))
     out.append("</svg>")
     return "\n".join(out)

@@ -99,6 +99,32 @@ truth = ["T-ALL_NKX2", "AML_other", "AML NOS", "T-ALL_TAL1", "AML_KMT2A-r"]
 pred = [classes[i] for i in probs.argmax(1)]
 s = score_calls(truth, pred, calls, h)
 assert list(s["reported_correct"].fillna(-1)) == [1.0, 1.0, 1.0, -1.0, 1.0], s
+# provisional subtypes: a top class from the caution threshold up to the threshold, when no family reaches the
+# threshold; a family above the threshold comes first, a provisional subtype before a lineage
+from evaluation.hierarchy import check_thresholds, resolve_caution
+probs2 = np.array([[0.00, 0.00, 0.05, 0.85, 0.10],     # family 0.95 reaches 0.90: family, not provisional
+                   [0.85, 0.10, 0.02, 0.02, 0.01],     # provisional AML_KMT2A-r, although AML sums to 0.95
+                   [0.02, 0.85, 0.05, 0.04, 0.04],     # background class: never provisional; lineage AML is 0.87
+                   [0.05, 0.02, 0.82, 0.06, 0.05],     # provisional T-ALL_TAL1 (no family reaches 0.90)
+                   [0.79, 0.12, 0.05, 0.02, 0.02],     # below 0.80: lineage AML (0.91)
+                   [0.96, 0.01, 0.01, 0.01, 0.01]])    # subtype
+on = hierarchical_calls(probs2, classes, h, 0.90, caution_threshold=0.80)
+assert list(on["reported_level"]) == ["family", "provisional", "none", "provisional", "lineage", "subtype"], on
+assert list(on["reported_call"])[1] == "AML_KMT2A-r" and list(on["reported_call"])[3] == "T-ALL_TAL1", on
+off = hierarchical_calls(probs2, classes, h, 0.90, caution_threshold=0)
+assert list(off["reported_level"]) == ["family", "lineage", "none", "lineage", "lineage", "subtype"], off
+assert off.equals(hierarchical_calls(probs2, classes, h, 0.90)), "caution 0 must equal no caution threshold"
+truth2 = ["T-ALL_TLX1", "AML_KMT2A-r", "AML_other", "T-ALL_TLX3", "AML_KMT2A-r", "AML_KMT2A-r"]
+s2 = score_calls(truth2, [classes[i] for i in probs2.argmax(1)], on, h)
+assert list(s2["reported_correct"].fillna(-1)) == [1.0, 1.0, -1.0, 0.0, 1.0, 1.0], s2
+assert list(s2["lineage_correct"].fillna(-1))[3] == 1.0, s2
+assert resolve_caution(0.90, None) == 0.80 and resolve_caution(0.80, None) is None and resolve_caution(0.90, 0) is None
+for bad in (0.90, 0.95, -0.1):
+    try:
+        check_thresholds(0.90, bad)
+        raise SystemExit(f"caution threshold {bad} was not refused")
+    except ValueError:
+        pass
 print("hierarchy ok")
 PY
 step contents_err "$PYTHON" - "$TMP" <<'PY'
@@ -119,7 +145,7 @@ c = pd.read_csv(f"{tmp}/comparison_err.csv", index_col=0)
 for row in ("ONT samples, binary-err10_*", "mean over oneread-err10_*", "binary-err10_0.50", "binary_0.50"):
     assert row in c.index, f"row {row} missing from the comparison"
 h = pd.read_csv(f"{tmp}/run_err/hierarchy_report/hierarchy_by_condition.csv", index_col=0)
-levels = ["share_subtype", "share_no_subtype", "share_family", "share_lineage", "share_none"]
+levels = ["share_subtype", "share_no_subtype", "share_family", "share_provisional", "share_lineage", "share_none"]
 assert np.allclose(h[levels].sum(axis=1), 1.0), h[levels]
 assert (h["share_reported_any_level"] >= h["share_subtype"] - 1e-9).all()
 assert all(str(i).startswith(("binary", "oneread")) for i in h.index), list(h.index)
@@ -130,7 +156,7 @@ assert list(e["class"]) == ["B-ALL_TCF3-PBX1"] * 2 and (e["n"] == 7).all(), e
 assert len(pd.read_csv(f"{tmp}/run_err/excluded_check/per_sample.csv")) == 14
 p = pd.read_csv(f"{tmp}/pred_err/predictions.csv")
 assert {"reported_call", "reported_level", "family", "lineage", "lineage_prob"} <= set(p.columns)
-assert set(p["reported_level"]) <= {"subtype", "no_subtype", "family", "lineage", "none"}
+assert set(p["reported_level"]) <= {"subtype", "no_subtype", "family", "provisional", "lineage", "none"}
 s = json.load(open(f"{tmp}/pred_err/summary_metrics.json"))
 assert s["reported_call"]["all_with_truth"]["n"] == 8, s["reported_call"]
 print("call-error and hierarchy contents ok")

@@ -2,7 +2,7 @@
 
 ## The model
 
-The model described in the article, version 0.4.0, classifies acute leukemia from the sparse CpG methylation calls of a low-pass nanopore genome run. It was trained with configs/recipe_v0.4.0.args on 2,845 methylation arrays in 32 classes, with the seed 42, and SPARSH 1.0.0 runs it. It consists of five neural networks, one from each fold of a nested cross-validation, each calibrated by temperature scaling, and its probabilities are the average of the five. The model and its recipe were fixed, and a checksum of every file was recorded, before the model was applied to any nanopore sample.
+The model described in the article, version 0.4.0, classifies acute leukemia from the sparse CpG methylation calls of a low-pass nanopore genome run. It was trained with configs/recipe_v0.4.0.args on 2,845 methylation arrays in 32 classes, with the seed 42, and SPARSH 1.0.0 and later run it. It consists of five neural networks, one from each fold of a nested cross-validation, each calibrated by temperature scaling, and its probabilities are the average of the five. The model and its recipe were fixed, and a checksum of every file was recorded, before the model was applied to any nanopore sample.
 
 ## Intended use
 
@@ -14,7 +14,7 @@ It is not meant for methylation arrays, for which other classifiers exist. Nor i
 
 The input is one CSV file per sample with a methylation call, 1 or 0, for every array CpG that the reads cover, made from a modkit bedMethyl file of reads aligned to GRCh37 (docs/NANOPORE.md). The model reads the CpGs listed in its selected_cpgs.json, and CpGs without reads are treated as missing. It was trained on samples covering 2% to 95% of its CpGs and tested in cross-validation from 5% to 90%. Samples covering less than 1% get probabilities but no reported call, and the report flags samples below 5%.
 
-The output is a probability for each of the 32 classes and a reported call at a threshold of 0.90. When no class reaches the threshold, the call falls back to a family of related subtypes and then to a lineage, using their summed probabilities (configs/class_hierarchy.json).
+The output is a probability for each of the 32 classes and a reported call at a threshold of 0.90. When no class reaches the threshold, the call falls back to a family of related subtypes, using their summed probabilities (configs/class_hierarchy.json); then, from SPARSH 1.1.0, to the most probable class reported as a provisional subtype when its probability reaches 0.80; and then to a lineage. The threshold of 0.90 is the one stored with the model, fixed before it was applied to any nanopore sample. The provisional level of 0.80 follows the threshold of MARLIN and was added afterwards, in the software rather than the model, whose files did not change.
 
 ## Classes
 
@@ -33,6 +33,8 @@ Every array is presented as a simulated nanopore sample: a random share of its C
 ## Performance in cross-validation
 
 Every array was scored once, by the network of the fold that had held it out, on simulated nanopore reads. The file cv_metrics_by_condition.csv of the model gives every condition. At 30% coverage, without dilution, the accuracy was 0.935 and the balanced accuracy (the mean recall over classes) 0.929. The most probable class reached 0.90 for 85.1% of the arrays, and 98.0% of those calls were correct. Averaged over coverages from 5% to 90%, the balanced accuracy was 0.918. With the leukemia arrays diluted to 30% blasts, at 30% coverage, the balanced accuracy fell to 0.804, and 38.9% of the arrays reached the threshold.
+
+Calls between 0.80 and 0.90, which SPARSH 1.1.0 reports as provisional when no family reaches 0.90, were correct less often. At 30% coverage, without dilution, the most probable class lay in that range for 5.2% of the arrays, and 86.6% of those calls were correct; together with the calls at 0.90, 90.4% of the arrays reached 0.80, and 97.3% of those calls were correct. With dilution to 50% blasts, 10.2% of the arrays lay in the range and 89.6% of those calls were correct, and with dilution to 30% blasts, 16.4% and 94.4%. A receiver operating characteristic analysis of the most probable class's probability, with each array counted as correctly classified or not, gave at 30% coverage an area under the curve of 0.91 without dilution, and the cut-off that maximizes the Youden index lay at 0.95; it lay at 0.86 with dilution to 50% blasts and at 0.69 with dilution to 30% blasts. These figures count the most probable class against the array's class, without the family and lineage fallback, and come from scripts/threshold_analysis.py.
 
 These figures describe single networks on simulated reads. The deployed model averages five networks, which makes its probabilities somewhat more conservative, and real nanopore calls carry errors and coverage patterns that the simulation does not fully reproduce. The performance on nanopore samples is reported in the article.
 

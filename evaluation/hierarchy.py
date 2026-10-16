@@ -7,16 +7,26 @@ subtypes. Probabilities of a family or a lineage are the sums of its classes'
 calibrated probabilities. Each sample is reported at the most specific level
 that reaches the threshold:
 
-  subtype     the top class reaches the threshold
-  no_subtype  the top class reaches it but is a background class such as
-              AML_other: reported as "<lineage>, no specific subtype"
-  family      no class does, but the summed probability of a family does
-  lineage     no family does, but a lineage does: "<lineage>, subtype undetermined"
-  none        nothing reaches the threshold (or coverage is too low)
+  subtype      the top class reaches the threshold
+  no_subtype   the top class reaches it but is a background class such as
+               AML_other: reported as "<lineage>, no specific subtype"
+  family       no class does, but the summed probability of a family does
+  provisional  no family does either, but the top class reaches the lower
+               caution threshold (0.80 by default): the subtype is reported as
+               provisional, to be confirmed by other tests
+  lineage      none of these, but a lineage does: "<lineage>, subtype undetermined"
+  none         nothing reaches the threshold (or coverage is too low)
 
-A reported call is correct when the true class is the reported subtype, lies in
-the reported family (any configured member, including classes the model lacks),
-or belongs to the reported lineage. For no_subtype calls,
+A family that reaches the threshold is reported before a provisional subtype, so
+a call below the threshold never takes the place of one above it; a provisional
+subtype is reported before a lineage, since it says more than "subtype
+undetermined" and is marked as provisional. A background class never gives a
+provisional call. With the caution threshold switched off (None or 0) the
+provisional level is never used and the calls are those of SPARSH 1.0.0.
+
+A reported call is correct when the true class is the reported subtype (also for
+a provisional subtype), lies in the reported family (any configured member,
+including classes the model lacks), or belongs to the reported lineage. For no_subtype calls,
 reported_correct requires the true class to be that background class (strict),
 and lineage_correct records whether at least the lineage is right. True labels
 that are not model classes still get a lineage from the prefix rules, so
@@ -33,7 +43,32 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
-LEVELS = ("subtype", "no_subtype", "family", "lineage", "none")
+LEVELS = ("subtype", "no_subtype", "family", "provisional", "lineage", "none")
+
+# The lower threshold at which a subtype is reported as provisional when nothing more certain is reported.
+DEFAULT_CAUTION_THRESHOLD = 0.80
+
+
+def check_thresholds(threshold: float, caution_threshold: Optional[float]) -> Optional[float]:
+    """The caution threshold to use (None when switched off); refuses one that is not below the threshold."""
+    if not 0 < threshold <= 1:
+        raise ValueError(f"the threshold must be above 0 and at most 1, not {threshold}")
+    if caution_threshold is None or caution_threshold == 0:
+        return None
+    if not 0 < caution_threshold < threshold:
+        raise ValueError(f"the caution threshold ({caution_threshold}) must be above 0 and below the threshold "
+                         f"({threshold}); 0 switches it off")
+    return float(caution_threshold)
+
+
+def resolve_caution(threshold: float, given: Optional[float]) -> Optional[float]:
+    """
+    The caution threshold of a run: the value given (0 = off), or by default DEFAULT_CAUTION_THRESHOLD
+    when it lies below the threshold, and none otherwise (a threshold of 0.80 or lower leaves no room for it).
+    """
+    if given is None:
+        return DEFAULT_CAUTION_THRESHOLD if DEFAULT_CAUTION_THRESHOLD < threshold else None
+    return check_thresholds(threshold, given)
 
 
 class Hierarchy:
@@ -135,11 +170,14 @@ def _group_sums(probs: np.ndarray, classes: Sequence[str], group_of: Dict[str, s
 
 
 def hierarchical_calls(probs: np.ndarray, classes: Sequence[str], h: Hierarchy, threshold: float,
-                       callable_mask: Optional[np.ndarray] = None) -> pd.DataFrame:
+                       callable_mask: Optional[np.ndarray] = None,
+                       caution_threshold: Optional[float] = None) -> pd.DataFrame:
     """
     One row per sample: the reported call and level; the family (with its summed probability)
     that was reported, or else the family of the top class, if any; the most probable lineage.
+    caution_threshold (None or 0 = off) enables provisional subtypes, see the module docstring.
     """
+    caution = check_thresholds(threshold, caution_threshold)
     probs = np.asarray(probs, dtype=float)
     n = len(probs)
     top = probs.argmax(axis=1)
@@ -168,6 +206,8 @@ def hierarchical_calls(probs: np.ndarray, classes: Sequence[str], h: Hierarchy, 
         elif fam_p.shape[1] and best_prob >= threshold:
             call, level = best_name, "family"
             fname, fprob = best_name, best_prob
+        elif caution is not None and top_p[i] >= caution and cls not in h.no_subtype:
+            call, level = cls, "provisional"
         elif lprob >= threshold:
             call, level = f"{lname}, subtype undetermined", "lineage"
         else:
@@ -188,7 +228,7 @@ def score_calls(true_names: Sequence[str], predictions: Sequence[str], calls: pd
             rc.append(np.nan)
             lc.append(np.nan)
             continue
-        if level in ("subtype", "no_subtype"):
+        if level in ("subtype", "no_subtype", "provisional"):
             rc.append(float(t == p))
             lc.append(float(h.lineage(t) == h.lineage_of.get(p, h.lineage(p))))
         elif level == "family":
@@ -213,7 +253,7 @@ def summarize_calls(calls: pd.DataFrame, scored: Optional[pd.DataFrame] = None) 
         rep = level != "none"
         out["accuracy_reported"] = float(scored.loc[rep, "reported_correct"].mean()) if rep.any() else float("nan")
         out["lineage_accuracy_reported"] = float(scored.loc[rep, "lineage_correct"].mean()) if rep.any() else float("nan")
-        for lev in ("subtype", "no_subtype", "family", "lineage"):
+        for lev in ("subtype", "no_subtype", "family", "provisional", "lineage"):
             m = level == lev
             out[f"accuracy_{lev}"] = float(scored.loc[m, "reported_correct"].mean()) if m.any() else float("nan")
     return out

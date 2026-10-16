@@ -13,11 +13,20 @@ hierarchy, the colors and the interpretation text; evaluation/display.py maps be
 show the shown names again.
 
 Threshold. The report uses the threshold of the prediction run (from prediction_info.json; for a prediction folder
-without that file, the one stored with the model, else 0.90). When another threshold is asked for, the reported calls are
-worked out again from the class probabilities with evaluation/hierarchy.py, as predict.py does, so that every
-page agrees with the threshold it states. Samples that predict.py found to have too few observed CpGs stay not
-callable. At the prediction run's own threshold the calls of predictions.csv are used as they are, because its
-probabilities are rounded to five decimals and a recomputation could move a sample that lies on the threshold.
+without that file, the one stored with the model, else 0.90) and its caution threshold (below). When another
+threshold is asked for, the reported calls are worked out again from the class probabilities with
+evaluation/hierarchy.py, as predict.py does, so that every page agrees with the threshold it states. Samples that
+predict.py found to have too few observed CpGs stay not callable. At the prediction run's own threshold the calls
+of predictions.csv are used as they are, because its probabilities are rounded to five decimals and a
+recomputation could move a sample that lies on the threshold.
+The caution threshold (provisional subtypes, see evaluation/hierarchy.py) is the prediction run's: none for a run
+made before SPARSH 1.1.0, whose record has no caution threshold. --caution_threshold sets another (0 = none), and the
+calls are then worked out again in the same way.
+
+Provisional calls in cross-validation. The cross-validation tables of a model folder record calls at the threshold
+only. How often calls between the caution threshold and the threshold were right comes from
+configs/cv_caution_bands.csv (written by scripts/threshold_analysis.py from a training run's out-of-fold
+predictions), whose rows are used only for the model whose config.json has the SHA-256 checksum they record.
 
 Coverage. A sample with fewer than 5% of the model's CpGs observed is flagged as having low coverage: the deployed
 recipe is tested in cross-validation from 5% of its CpGs upwards. The caveat on its page states the range the
@@ -25,6 +34,7 @@ model's own cross-validation tables cover, when they are available.
 """
 
 import base64
+import hashlib
 import json
 import re
 import sys
@@ -37,12 +47,14 @@ import numpy as np
 import pandas as pd
 
 from evaluation.display import internal_names, load_display_names, show
-from evaluation.hierarchy import LEVELS, Hierarchy, default_hierarchy_path, hierarchical_calls, load_hierarchy
+from evaluation.hierarchy import (LEVELS, Hierarchy, check_thresholds, default_hierarchy_path,
+                                  hierarchical_calls, load_hierarchy)
 
 REPO = Path(__file__).resolve().parent.parent
 VERSION = (REPO / "VERSION").read_text().strip()
 DEFAULT_INTERPRETATION = REPO / "configs" / "interpretation.json"
 COLOURS_FILE = REPO / "configs" / "class_colours.json"
+CAUTION_BANDS_FILE = REPO / "configs" / "cv_caution_bands.csv"
 DEFAULT_TITLE = "SPARSH methylation classification report"
 DEFAULT_THRESHOLD = 0.90
 LOW_COVERAGE = 0.05
@@ -104,6 +116,7 @@ class CrossValidation:
     binary: pd.DataFrame
     recall: Optional[pd.DataFrame]
     folder: Path
+    bands: Optional[pd.DataFrame] = None  # calls from the caution threshold up to the threshold, by condition
 
 
 @dataclass
@@ -122,7 +135,7 @@ class Case:
     top: str                              # most probable class (internal name)
     confidence: float                     # its probability
     coverage_ok: bool                     # predict.py found enough observed CpGs to call the sample
-    level: str                            # subtype, no_subtype, family, lineage or none
+    level: str                            # subtype, no_subtype, family, provisional, lineage or none
     family: str                           # the reported family, or else the family of the top class, or ""
     family_prob: float
     lineage: str                          # the most probable lineage
@@ -157,6 +170,8 @@ class Context:
     has_sheet: bool = False
     has_karyotypes: bool = False
     report_version: str = VERSION
+    caution_threshold: Optional[float] = None       # provisional subtypes from here up to the threshold; None = off
+    prediction_caution: Optional[float] = None
 
     def shown(self, cls: str) -> str:
         """The name shown for an internal class name."""
@@ -542,6 +557,42 @@ def read_karyotypes(folder: Path, predicted: Sequence[str], wanted: Sequence[str
     return out
 
 
+def config_checksum(model_dir: Path) -> Optional[str]:
+    """SHA-256 checksum of a model folder's config.json, which identifies the model; None without the file."""
+    path = model_dir / "config.json"
+    if not path.exists():
+        return None
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def load_caution_bands(model_dir: Path, threshold: float, caution: float, path: Path) -> Optional[pd.DataFrame]:
+    """
+    The rows of the cross-validation table of provisional calls (configs/cv_caution_bands.csv) for this model, at
+    this threshold and caution threshold: one row per condition, with the share of arrays whose most probable class
+    lay from the caution threshold up to the threshold, and the accuracy of those calls. None when the file has none.
+    """
+    if not path.exists():
+        return None
+    try:
+        table = pd.read_csv(path, dtype={"model_config_sha256": str, "condition": str})
+    except (pd.errors.ParserError, pd.errors.EmptyDataError, OSError) as e:
+        warn(f"{path} cannot be read ({e}); the cross-validation figures of provisional calls are left out")
+        return None
+    needed = {"model_config_sha256", "condition", "threshold", "caution_threshold", "band_share", "band_accuracy"}
+    if not needed <= set(table.columns):
+        warn(f"{path} lacks the columns {sorted(needed - set(table.columns))}; the cross-validation figures of "
+             "provisional calls are left out")
+        return None
+    rows = table[(table["model_config_sha256"] == config_checksum(model_dir))
+                 & ((table["threshold"] - threshold).abs() < 1e-6)
+                 & ((table["caution_threshold"] - caution).abs() < 1e-6)]
+    if rows.empty:
+        print(f"{path.name} has no figures for this model at {caution:.2f} to {threshold:.2f}; the cross-validation "
+              "figures of provisional calls are left out")
+        return None
+    return rows.set_index("condition")
+
+
 def load_cross_validation(model_dir: Path, threshold: float) -> Optional[CrossValidation]:
     """
     The rows of cv_metrics_by_condition.csv named binary_<fraction> (undiluted, without call errors) and
@@ -628,7 +679,8 @@ def page_names(samples: Sequence[str]) -> Dict[str, str]:
 
 # ---------------------------------------------------------------------------------------------- everything
 def load_inputs(predictions_dir, model_dir=None, interpretation=None, sample_sheet=None, karyotype_dir=None,
-                samples=None, title=None, threshold=None) -> Tuple[Context, List[Case]]:
+                samples=None, title=None, threshold=None, caution_threshold=None,
+                caution_bands=None) -> Tuple[Context, List[Case]]:
     """Read and check every input of a report; see the module docstring. Raises ReportInputError."""
     pred_dir = Path(predictions_dir).expanduser()
     if not pred_dir.is_dir():
@@ -697,7 +749,20 @@ def load_inputs(predictions_dir, model_dir=None, interpretation=None, sample_she
     use = float(threshold) if threshold is not None else prediction_threshold
     if not 0.0 < use <= 1.0:
         raise ReportInputError(f"The threshold must be above 0 and at most 1 (got {use})")
-    recomputed = abs(use - prediction_threshold) > 1e-9
+    prediction_caution = info.get("caution_threshold")          # absent before SPARSH 1.1.0: no provisional calls
+    prediction_caution = float(prediction_caution) if prediction_caution else None
+    if caution_threshold is not None:
+        try:
+            caution = check_thresholds(use, float(caution_threshold))
+        except ValueError as e:
+            raise ReportInputError(f"--caution_threshold: {e}")
+    elif prediction_caution is not None and prediction_caution >= use:
+        warn(f"the caution threshold of the prediction run ({prediction_caution:.2f}) is not below the threshold "
+             f"{use:.2f}; no subtype is reported as provisional")
+        caution = None
+    else:
+        caution = prediction_caution
+    recomputed = abs(use - prediction_threshold) > 1e-9 or (caution or 0.0) != (prediction_caution or 0.0)
     back = internal_names(display)
     P = df[prob_cols].to_numpy(dtype=float)
     coverage_ok = (df["reported_call"] != COVERAGE_CALL).to_numpy()
@@ -708,13 +773,16 @@ def load_inputs(predictions_dir, model_dir=None, interpretation=None, sample_she
             warn(f"predictions.csv does not look as if it was made at the threshold {prediction_threshold:.2f} "
                  f"(sample {df.loc[off, 'sample'].iloc[0]}); give the prediction run's threshold with --threshold")
     if recomputed:
-        calls = hierarchical_calls(P, classes, h, use, coverage_ok)
+        calls = hierarchical_calls(P, classes, h, use, coverage_ok, caution_threshold=caution)
         top_idx = P.argmax(axis=1)
         tops = [classes[i] for i in top_idx]
         confidence = P[np.arange(len(P)), top_idx]
         source = calls
-        print(f"Reported calls worked out again at the threshold {use:.2f} (the prediction run used "
-              f"{prediction_threshold:.2f})")
+        def both(t, c):
+            return f"{t:.2f}" + (f", provisional subtypes from {c:.2f}" if c is not None
+                                 else ", no provisional subtypes")
+        print(f"Reported calls worked out again at the threshold {both(use, caution)} (the prediction run used "
+              f"{both(prediction_threshold, prediction_caution)})")
     else:
         tops = [back.get(p, p) for p in df["prediction"]]
         unknown = sorted({t for t in tops if t not in classes})
@@ -751,6 +819,9 @@ def load_inputs(predictions_dir, model_dir=None, interpretation=None, sample_she
     interp_path = Path(interpretation).expanduser() if interpretation else DEFAULT_INTERPRETATION
     interp = load_interpretation(interp_path, classes, display, h)
     cv = load_cross_validation(folder, use) if available else None
+    if cv is not None and caution is not None:
+        cv.bands = load_caution_bands(folder, use, caution,
+                                      Path(caution_bands).expanduser() if caution_bands else CAUTION_BANDS_FILE)
 
     inference = config.get("inference", {})
     n_cpgs = info.get("n_cpgs") or config.get("model", {}).get("input_dim")
@@ -788,5 +859,5 @@ def load_inputs(predictions_dir, model_dir=None, interpretation=None, sample_she
         interpretation=interp, interpretation_source=interp_path, model=model, cv=cv,
         prediction_version=info.get("sparsh_version"), prediction_created=info.get("created"),
         duplicate_probes=info.get("duplicate_probes"), has_sheet=bool(sample_sheet),
-        has_karyotypes=bool(karyotype_dir))
+        has_karyotypes=bool(karyotype_dir), caution_threshold=caution, prediction_caution=prediction_caution)
     return ctx, cases

@@ -26,7 +26,7 @@ from .inputs import Case, Context, Karyotype
 from .svg import chip, probability_chart
 
 RUO = "For research use only. Not for use in diagnostic procedures."
-LEVEL_ORDER = {"subtype": 0, "no_subtype": 1, "family": 2, "lineage": 3, "none": 4}
+LEVEL_ORDER = {"subtype": 0, "no_subtype": 1, "family": 2, "provisional": 3, "lineage": 4, "none": 5}
 EVENT_COLUMNS = (("type", "Type"), ("level", "Extent"), ("chrom", "Chromosome"), ("bands", "Bands"),
                  ("start", "Start"), ("end", "End"), ("size_mb", "Size (Mb)"), ("copy_number", "Copy number"),
                  ("cell_fraction", "Cell fraction"), ("whole_chromosome", "Whole chromosome"),
@@ -67,8 +67,13 @@ def model_line(ctx: Context) -> str:
         parts.append(nets)
     parts.append(f"{m.n_classes} classes")
     threshold = f"reporting threshold {text.fmt_threshold(ctx.threshold)}"
+    if ctx.caution_threshold is not None:
+        threshold += f", provisional subtypes from {text.fmt_threshold(ctx.caution_threshold)}"
     if ctx.recomputed:
-        threshold += f" (the prediction run used {text.fmt_threshold(ctx.prediction_threshold)})"
+        used = text.fmt_threshold(ctx.prediction_threshold)
+        used += (f", provisional subtypes from {text.fmt_threshold(ctx.prediction_caution)}"
+                 if ctx.prediction_caution is not None else ", no provisional subtypes")
+        threshold += f" (the prediction run used {used})"
     parts.append(threshold)
     lead = f"{m.name}: " if m.name else "Model folder not recorded; "
     return lead + ", ".join(parts)
@@ -119,7 +124,11 @@ def result_panel(case: Case, res: text.Result, ctx: Context) -> str:
         lineage = "<span>Not determined</span>"
     result_chip = chip(ctx.colour(res.result_class)) if res.result_class else ""
     result_subs = "".join(f'<div class="sub">{e(s)}</div>' for s in (res.result_name, res.result_note) if s)
-    if res.confidence is not None:
+    if res.confidence is not None and res.level == "provisional":
+        confidence = (f"{e(text.fmt_prob(res.confidence, ctx.threshold))} "
+                      f'<span class="threshold">(provisional range {e(text.fmt_threshold(ctx.caution_threshold))} '
+                      f'to {e(text.fmt_threshold(ctx.threshold))})</span>')
+    elif res.confidence is not None:
         confidence = (f"{e(text.fmt_prob(res.confidence, ctx.threshold))} "
                       f'<span class="threshold">(reporting threshold {e(text.fmt_threshold(ctx.threshold))})</span>')
     else:
@@ -141,12 +150,16 @@ def probabilities(case: Case, ctx: Context) -> str:
     t = ctx.threshold
     top = text.top_classes(case, ctx, 5)
     rows = [(ctx.shown(c), p, ctx.colour(c), text.fmt_prob(p, t)) for c, p in top]
+    c = ctx.caution_threshold
     svg = probability_chart(rows, t, f"Threshold {text.fmt_threshold(t)}",
-                            f"Class probabilities of sample {case.sample}: the {len(rows)} most probable classes")
+                            f"Class probabilities of sample {case.sample}: the {len(rows)} most probable classes",
+                            caution=c, caution_label=f"Provisional {text.fmt_threshold(c)}" if c is not None else "")
     n = len(ctx.classes)
     caption = (f"The {len(rows)} most probable of the model's {n} classes, in the class colors. The dashed line "
-               f"marks the reporting threshold of {text.fmt_threshold(t)}. The probabilities of all {n} classes add "
-               "up to 1.")
+               f"marks the reporting threshold of {text.fmt_threshold(t)}"
+               + (f", and the dotted line the caution threshold of {text.fmt_threshold(c)}, from which a subtype is "
+                  "reported as provisional when nothing more certain is" if c is not None else "")
+               + f". The probabilities of all {n} classes add up to 1.")
     sums = text.lineage_sums(case, ctx)
     table = "".join(f'<tr><td><span class="lin">{chip(ctx.lineage_colour(lin))}{e(lin)}</span></td>'
                     f'<td class="num">{e(text.fmt_prob(p, t))}</td></tr>' for lin, p in sums)
@@ -200,7 +213,11 @@ def evidence(case: Case, res: text.Result, ctx: Context) -> str:
               if m.n_networks and m.n_networks > 1 else "")
     source = (f"Source: condition {ev.condition} in cv_metrics_by_condition.csv"
               + (" and cv_recall_by_class.csv" if ctx.cv.recall is not None else "")
-              + f" of the model folder {ctx.cv.folder.name}. In cross-validation each training array was scored by "
+              + f" of the model folder {ctx.cv.folder.name}"
+              + ("; the figures of provisional calls from cv_caution_bands.csv, written from the same cross-validation"
+                 if case.level == "provisional" and ctx.cv.bands is not None and ev.condition in ctx.cv.bands.index
+                 else "")
+              + ". In cross-validation each training array was scored by "
               f"the network of its own fold, which had not seen it{scored}.")
     return ("<section>\n<h2>Evidence from cross-validation</h2>\n" + "\n".join(f"<p>{e(s)}</p>" for s in ev.sentences)
             + f'\n<p class="small muted">{e(source)}</p>\n</section>')
@@ -572,10 +589,13 @@ def index_page(cases: List[Case], results: Dict[str, text.Result], ctx: Context)
             f'<td data-sort="{e(r.lineage or "")}">{lineage}</td>'
             f"<td>{flags}</td>"
             "</tr>")
+    provisional = (f"provisional (a subtype reported from {text.fmt_threshold(ctx.caution_threshold)} up to "
+                   f"{text.fmt_threshold(t)}, to be confirmed by other tests), " if ctx.caution_threshold is not None
+                   else "")
     note = (f"Confidence is the probability of the reported result: of the class for a subtype, summed over the "
             f"classes of the family or lineage otherwise. Flags: low coverage (under 5% of the model's CpGs "
-            f"observed), below threshold (the most probable class is below {text.fmt_threshold(t)}), not callable "
-            "(nothing reported). Select a column heading to sort; type in the box to filter.")
+            f"observed), {provisional}below threshold (the most probable class is below {text.fmt_threshold(t)}), "
+            "not callable (nothing reported). Select a column heading to sort; type in the box to filter.")
     html = f"""<div class="page">
 <header class="report">
 <h1>{e(ctx.title)}</h1>
@@ -613,7 +633,9 @@ def summary_rows(cases: List[Case], results: Dict[str, text.Result], ctx: Contex
             "lineage_probability": r.lineage_prob if r.lineage else np.nan,
             "result": r.result, "result_name": r.result_name, "result_detail": r.result_note,
             "confidence": r.confidence if r.confidence is not None else np.nan,
-            "threshold": ctx.threshold, "confidence_text": r.confidence_text,
+            "threshold": ctx.threshold,
+            "caution_threshold": ctx.caution_threshold if ctx.caution_threshold is not None else np.nan,
+            "confidence_text": r.confidence_text,
             "reported_level": r.level, "level_text": r.level_text,
             "most_likely_class": ctx.shown(c.top), "most_likely_probability": c.confidence,
             "coverage_pct": c.coverage_pct, "flags": "; ".join(r.flags),

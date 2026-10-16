@@ -19,7 +19,7 @@ refused, because those samples are in-sample for some networks.
 
 Output folder (default <run>/excluded_check):
   per_sample.csv   one row per sample and coverage: prediction, confidence, called at
-                   the threshold, reported call and level (family and lineage fallback)
+                   the threshold, reported call and level (family, provisional subtype and lineage fallback)
   summary.csv      per class and coverage: share called at the threshold (every such
                    call is wrong, since the class is not in the model), share reported
                    at each level, the most common calls
@@ -37,7 +37,8 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
 from data.dataset import load_training_data  # noqa: E402
-from evaluation.hierarchy import default_hierarchy_path, hierarchical_calls, load_hierarchy  # noqa: E402
+from evaluation.hierarchy import (default_hierarchy_path, hierarchical_calls, load_hierarchy,  # noqa: E402
+                                  resolve_caution)
 from models.corruption import READ_SIMS, corrupt_rows  # noqa: E402
 from models.ensemble import ensemble_probs, load_models, load_run  # noqa: E402
 
@@ -68,6 +69,7 @@ def main():
     if not 0.0 <= args.call_error < 0.5:
         sys.exit("--call_error must be between 0 and 0.5")
     threshold = config["inference"].get("threshold", 0.90)
+    caution = resolve_caution(threshold, None)
     clip = config["inference"].get("clip_observed")
 
     bundle = load_training_data(args.data_path or d["data_path"], label_map, d.get("exclude_ids"),
@@ -102,7 +104,7 @@ def main():
             Xc = np.where(np.isnan(Xc), Xc, np.clip(Xc, clip[0], clip[1])).astype(np.float32)
         probs = ensemble_probs(models, Xc, device)
         order = np.argsort(-probs, axis=1)
-        calls = hierarchical_calls(probs, classes, h, threshold)
+        calls = hierarchical_calls(probs, classes, h, threshold, caution_threshold=caution)
         for i in range(len(ids)):
             rows.append({"sample_id": ids[i], "true_label": true[i], "coverage": cov,
                          "prediction": classes[order[i, 0]], "confidence": probs[i, order[i, 0]],
@@ -122,7 +124,7 @@ def main():
             "called_at_threshold": g["called"].mean(),
             "median_confidence": g["confidence"].median(),
             **{f"reported_{lev}": (g["reported_level"] == lev).mean()
-               for lev in ("subtype", "no_subtype", "family", "lineage", "none")},
+               for lev in ("subtype", "no_subtype", "family", "provisional", "lineage", "none")},
             "called_as": "; ".join(f"{c} {n}" for c, n in top_calls.items()),
             "lineage_calls": "; ".join(f"{c} {n}" for c, n in
                                        g.loc[g["reported_level"] == "lineage", "lineage"].value_counts().items()),

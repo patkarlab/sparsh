@@ -22,12 +22,12 @@ SPARSH is research software. It is not a medical device, has not been cleared or
 
 ## Overview
 
-SPARSH 1.0.0 runs the model described in the article, version 0.4.0. The model:
+SPARSH 1.1.0 runs the model described in the article, version 0.4.0. The model:
 
 - reads one methylation call, 1 or 0, for each of its 354,551 CpGs (CpGs of Illumina's MethylationEPIC v2.0 array) that the reads cover, made with modkit from reads aligned to GRCh37, with 5-methylcytosine and 5-hydroxymethylcytosine counted together;
 - knows 32 classes: 13 of acute myeloid leukemia, 10 of B-lymphoblastic leukemia, 5 of T-lymphoblastic leukemia, 2 of acute leukemia of ambiguous lineage, blastic plasmacytoid dendritic cell neoplasm and normal bone marrow (docs/MODEL_CARD.md lists them);
 - was trained on 2,845 arrays, each presented as a simulated nanopore sample covering between 2% and 95% of its CpGs;
-- averages five networks, each calibrated, and reports a subtype when its probability reaches 0.90, falling back to a family of related subtypes and then to a lineage when no subtype does;
+- averages five networks, each calibrated, and reports a subtype when its probability reaches 0.90, falling back to a family of related subtypes, then to a provisional subtype from 0.80, and then to a lineage;
 - classifies on an ordinary processor; a graphics processing unit is needed only to train a full-size model.
 
 The same reads give a copy-number karyotype: gains and losses of whole chromosomes and arms, and large segmental changes, in the notation of the International System for Human Cytogenomic Nomenclature (ISCN 2024), with flags for lesions that matter in acute leukemia. scripts/run_sample.py runs all of it for one sample in a single command, from its BAM files to its report page.
@@ -98,7 +98,7 @@ Linear(256 → 32), divided by the network's temperature, softmax
 average of the five networks' probabilities
         │
         ▼
-reported call: a class at 0.90, else a family, else a lineage
+reported call: a class at 0.90, else a family at 0.90, else a provisional class at 0.80, else a lineage at 0.90
 ```
 
 The division by the share observed keeps the input to the first layer at the same scale at every coverage. Each of the five networks comes from one fold of a nested cross-validation, and its temperature was fitted on that fold's inner validation split. Almost all of the model's size, about 1.45 gigabytes per network, is the first layer, which connects every CpG to each of 1,024 units.
@@ -341,8 +341,11 @@ For every sample the model gives a probability for each of its 32 classes, and t
 
 1. When the most probable class reaches 0.90, that subtype is reported.
 2. Otherwise, when the summed probability of a family of related subtypes reaches it, the family is reported, for example "AML, HOX-related (NPM1, NUP98, DEK::NUP214, UBTF or KMT2A-r)".
-3. Otherwise, when the summed probability of a lineage reaches it, the lineage is reported: "B-ALL, subtype undetermined".
-4. Otherwise the sample is "not callable".
+3. Otherwise, when the most probable class reaches 0.80, it is reported as a provisional subtype, to be confirmed by other tests.
+4. Otherwise, when the summed probability of a lineage reaches 0.90, the lineage is reported: "B-ALL, subtype undetermined".
+5. Otherwise the sample is "not callable".
+
+A family that reaches 0.90 is reported before a provisional subtype, so that a call below the threshold never takes the place of one above it. A provisional subtype is reported before a lineage, because it says more than "subtype undetermined", and it is marked as provisional wherever it appears. The level of 0.80 follows the threshold of MARLIN; it was added in SPARSH 1.1.0, after the samples of the article had been classified at 0.90, which remains the threshold of the model. In cross-validation at 30% coverage, calls of the model whose most probable class lay from 0.80 up to 0.90 were correct for 86.6% of the undiluted arrays, against 98.0% at or above 0.90, and for 89.6% and 94.4% of the arrays diluted to 50% and 30% blasts (docs/MODEL_CARD.md). --caution_threshold sets another level, and --caution_threshold 0 gives the calls of SPARSH 1.0.0. scripts/threshold_analysis.py gives these figures, with a receiver operating characteristic analysis of the probabilities, from the out-of-fold predictions of a training run.
 
 A sample whose reads cover fewer than 1% of the model's CpGs gets probabilities but no call ("not callable (coverage)"), and the report flags samples below 5%. configs/class_hierarchy.json defines the families and lineages. It can also name background classes, reported as "<lineage>, no specific subtype" at the level no_subtype; model 0.4.0 has none.
 
@@ -352,19 +355,20 @@ predictions.csv has one row per sample, with these columns:
 - prediction, confidence, top2_class, top2_prob, top3_class and top3_prob: the three most probable classes;
 - callable and note: whether the sample can be called, that is, its coverage reaches the minimum and its most probable class the threshold; and a note on samples whose coverage is below the minimum;
 - family, family_prob, lineage and lineage_prob: the family and the lineage with their summed probabilities;
-- reported_call and reported_level: the call and its level (subtype, family, lineage or none);
+- reported_call and reported_level: the call and its level (subtype, family, provisional, lineage or none);
 - prob_ followed by a class name: the probability of every class.
 
-Selected columns of the predictions of the synthetic demo (see [Training on your own data](#training-on-your-own-data)), aligned for reading, show three of the levels:
+Selected columns of the predictions of the synthetic demo (see [Training on your own data](#training-on-your-own-data)), aligned for reading, show four of the levels:
 
 ```
-sample  coverage_pct  prediction        confidence  lineage  lineage_prob  reported_call                reported_level
-ONT07   27.63333      B-ALL_TCF3-PBX1   0.90104     B-ALL    0.97493       B-ALL_TCF3-PBX1              subtype
-ONT05   26.66667      B-ALL_Aneuploidy  0.76567     B-ALL    0.99709       B-ALL, subtype undetermined  lineage
-ONT01   27.50000      B-ALL_ETV6-RUNX1  0.56306     B-ALL    0.65366       not callable                 none
+sample  coverage_pct  prediction                               confidence  lineage  lineage_prob  reported_call                            reported_level
+ONT07   27.63333      B-ALL_TCF3-PBX1                          0.90104     B-ALL    0.97493       B-ALL_TCF3-PBX1                          subtype
+ONT06   20.66667      B-ALL_PAX5_BCR-ABL1_BCR-ABL1-Like_Other  0.87979     B-ALL    0.97378       B-ALL_PAX5_BCR-ABL1_BCR-ABL1-Like_Other  provisional
+ONT05   26.66667      B-ALL_Aneuploidy                         0.76567     B-ALL    0.99709       B-ALL, subtype undetermined              lineage
+ONT01   27.50000      B-ALL_ETV6-RUNX1                         0.56306     B-ALL    0.65366       not callable                             none
 ```
 
-In ONT07 the most probable class reaches 0.90 and is reported. In ONT05 no class does, but the B-lymphoblastic classes together reach 0.99, so the lineage is reported. In ONT01 the lineage reaches only 0.65, and nothing is reported.
+In ONT07 the most probable class reaches 0.90 and is reported. In ONT06 it reaches 0.88, between 0.80 and 0.90, and no family reaches 0.90, so it is reported as a provisional subtype. In ONT05 the most probable class reaches only 0.77, but the B-lymphoblastic classes together reach 0.99, so the lineage is reported. In ONT01 the lineage reaches only 0.65, and nothing is reported.
 
 scripts/report.py writes one self-contained HTML page per sample, written for a hematologist to read and print, and an index page that lists every sample. A page gives the call with its probability, the class probabilities, the interpretation of the class with the tests that confirm it, the copy-number karyotype when one was called, the evidence from cross-validation at a coverage like the sample's, and the input and its quality. The interpretation text comes from configs/interpretation.json and is marked as a draft until a hematopathologist has reviewed it. docs/REPORTS.md describes the pages.
 
@@ -426,13 +430,13 @@ Prediction and the reports then print, among other lines:
 ```
 Model: demo/model (ensemble, 3 network(s), 3000 CpGs, 8 classes)
 Predicted 8 samples (0 unreadable); coverage median 23.4% (range 20.1-27.6%); callable at >= 0.90: 2
-Reported at: subtype 2, no_subtype 0, family 0, lineage 3, none 3
+Reported at: subtype 2, no_subtype 0, family 0, provisional 1, lineage 2, none 3
 ...
-Reports for 8 samples: subtype 2, no_subtype 0, family 0, lineage 3, none 3
+Reports for 8 samples: subtype 2, no_subtype 0, family 0, provisional 1, lineage 2, none 3
 Written to demo/reports: index.html, cases/ (8 pages), report_summary.csv
 ```
 
-The toy model trains only briefly, so most of its probabilities stay below the threshold: its most probable class was right for all seven samples whose true class is one of its classes, two of them reached 0.90 and are reported as subtypes, three are reported at the level of the lineage, and three are not callable. demo/predictions/summary_metrics.json scores the predictions against demo/data/ground_truth.csv (an accuracy of 0.875 over the eight samples; the eighth counts as an error because its true class is not in the toy model), and demo/reports/index.html links the eight report pages. The report step warns that the interpretation text has no entry for one of the toy model's classes, whose pages use the class name and a neutral sentence. Other hardware or library versions can give slightly different numbers.
+The toy model trains only briefly, so most of its probabilities stay below the threshold: its most probable class was right for all seven samples whose true class is one of its classes, two of them reached 0.90 and are reported as subtypes, one is reported as a provisional subtype, two are reported at the level of the lineage, and three are not callable. demo/predictions/summary_metrics.json scores the predictions against demo/data/ground_truth.csv (an accuracy of 0.875 over the eight samples; the eighth counts as an error because its true class is not in the toy model), and demo/reports/index.html links the eight report pages. The report step warns that the interpretation text has no entry for one of the toy model's classes, whose pages use the class name and a neutral sentence. Other hardware or library versions can give slightly different numbers.
 
 ### Training data
 
@@ -476,7 +480,7 @@ runs/my_model/
 └── training_log.txt
 ```
 
-Other tools support training: scripts/compare_runs.py sets finished runs side by side, condition by condition; scripts/tune.py runs a bounded hyperparameter study with Optuna; scripts/label_audit.py lists training arrays whose methylation disagrees with their label; scripts/hierarchy_report.py shows what the family and lineage fallback adds; and scripts/score_excluded.py shows how the classes left out of training would be reported. docs/TRAINING.md describes the recipe, the outputs of a run and these analyses.
+Other tools support training: scripts/compare_runs.py sets finished runs side by side, condition by condition; scripts/tune.py runs a bounded hyperparameter study with Optuna; scripts/label_audit.py lists training arrays whose methylation disagrees with their label; scripts/hierarchy_report.py shows what the family, provisional and lineage fallback adds; scripts/threshold_analysis.py analyses the thresholds on the out-of-fold predictions; and scripts/score_excluded.py shows how the classes left out of training would be reported. docs/TRAINING.md describes the recipe, the outputs of a run and these analyses.
 
 ## Repository layout
 

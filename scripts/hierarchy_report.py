@@ -6,13 +6,14 @@ What the family fallback adds, from each run's saved out-of-fold predictions (tr
 
 For every simulated nanopore condition, each sample is reported at the most
 specific level that reaches the threshold (subtype, family or lineage; see
-evaluation/hierarchy.py and configs/class_hierarchy.json), and the tables give,
-per run:
+evaluation/hierarchy.py and configs/class_hierarchy.json), with provisional
+subtypes from the caution threshold (--caution_threshold, 0.80 by default; 0 =
+none) when no family reaches the threshold, and the tables give, per run:
   share_subtype           called at subtype level (with share_no_subtype, the callable
                           share at the threshold)
   share_reported_any_level called at any level
   accuracy_reported       share of those calls that are correct at the reported level
-  share_family, share_lineage, share_no_subtype
+  share_family, share_provisional, share_lineage, share_no_subtype
 with the mean over coverages and, with --ont_coverage, the value expected on
 those samples' coverages (coverage only, never labels).
 
@@ -42,11 +43,11 @@ sys.path.insert(0, str(REPO))
 from evaluation.conditions import (add_summary_rows, is_nanopore, parse_condition,  # noqa: E402
                                    read_ont_coverage)
 from evaluation.hierarchy import (LEVELS, default_hierarchy_path, hierarchical_calls, load_hierarchy,  # noqa: E402
-                                  score_calls, summarize_calls)
+                                  resolve_caution, score_calls, summarize_calls)
 from models.ensemble import load_run  # noqa: E402
 
-SHOWN = ["share_subtype", "share_reported_any_level", "accuracy_reported", "share_family", "share_lineage",
-         "share_no_subtype"]
+SHOWN = ["share_subtype", "share_reported_any_level", "accuracy_reported", "share_family", "share_provisional",
+         "accuracy_provisional", "share_lineage", "share_no_subtype"]
 
 
 def read_predictions(path: Path, classes):
@@ -109,6 +110,8 @@ def main():
     p.add_argument("--hierarchy", default=None,
                    help="Default configs/class_hierarchy.json; 'none' = lineage by class-name prefix only")
     p.add_argument("--threshold", type=float, default=None, help="Default: each run's stored threshold")
+    p.add_argument("--caution_threshold", type=float, default=None,
+                   help="Provisional subtypes from this value (default 0.80 when below the threshold; 0 = none)")
     p.add_argument("--ont_coverage", default=None, help="CSV from scripts/ont_coverage.py (coverage only)")
     p.add_argument("--detail_condition", default="auto", help="Condition for the per-class and pair tables")
     args = p.parse_args()
@@ -130,6 +133,10 @@ def main():
         name = run.name
         config, classes, _, _ = load_run(run)
         threshold = args.threshold if args.threshold is not None else config["inference"].get("threshold", 0.90)
+        try:
+            caution = resolve_caution(threshold, args.caution_threshold)
+        except ValueError as e:
+            sys.exit(str(e))
         h = load_hierarchy(str(hierarchy_path) if hierarchy_path else None, classes)
         out = run / "hierarchy_report"
         out.mkdir(exist_ok=True)
@@ -138,14 +145,15 @@ def main():
         conditions = [c for c in order if c in saved and is_nanopore(c)]
         if not conditions:
             sys.exit(f"{run}: no saved nanopore predictions (cv_predictions_<condition>.csv)")
-        print(f"\n== {name}: {len(classes)} classes, threshold {threshold:.2f}")
+        print(f"\n== {name}: {len(classes)} classes, threshold {threshold:.2f}, "
+              + (f"provisional subtypes from {caution:.2f}" if caution is not None else "no provisional subtypes"))
         print(h.describe())
 
         rows = {}
         detail = pick_detail(conditions, args.detail_condition)
         for cond in conditions:
             df, probs = read_predictions(run / f"cv_predictions_{cond}.csv", classes)
-            calls = hierarchical_calls(probs, classes, h, threshold)
+            calls = hierarchical_calls(probs, classes, h, threshold, caution_threshold=caution)
             scored = score_calls(df["true_label"], df["prediction"], calls, h)
             rows[cond] = summarize_calls(calls, scored)
             if cond == detail:

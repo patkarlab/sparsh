@@ -295,4 +295,57 @@ assert not [lin for _, lin in hierarchy["lineage_by_prefix"] if lin not in shipp
 assert set(shipped["not_in_model"]) <= {lin for _, lin in hierarchy["lineage_by_prefix"]}
 print(f"contents ok: {len(samples)} pages, index, summary, prediction_info.json")
 PY
+# Provisional subtypes. The tiny model's probabilities are low, so the thresholds are set from them: the caution
+# threshold below the smallest top probability and the threshold above the largest. Predicted without families
+# (--hierarchy none), every sample is then a provisional subtype. The figures quoted for such calls come from
+# scripts/threshold_analysis.py run on the same model at the same thresholds.
+read -r LOW HIGH < <("$PYTHON" - "$TMP/pred/predictions.csv" <<'PY'
+import sys
+import pandas as pd
+c = pd.read_csv(sys.argv[1])["confidence"]
+print(f"{max(0.01, c.min() - 0.005):.4f} {min(0.999, c.max() + 0.005):.4f}")
+PY
+)
+step threshold_analysis "$PYTHON" scripts/threshold_analysis.py --run_dir "$TMP/run" --threshold "$HIGH" \
+                   --caution_threshold "$LOW" --output "$TMP/thresholds.csv" --write_bands "$TMP/bands.csv"
+step predict_provisional "$PYTHON" scripts/predict.py --model_dir "$TMP/run" --ont_dir "$TMP/data/ont" \
+                   --output_dir "$TMP/pred_prov" --device cpu --hierarchy none --threshold "$HIGH" \
+                   --caution_threshold "$LOW"
+step report_provisional "$PYTHON" scripts/report.py --predictions_dir "$TMP/pred_prov" \
+                   --output_dir "$TMP/report_prov" --caution_bands "$TMP/bands.csv"
+step report_caution_off "$PYTHON" scripts/report.py --predictions_dir "$TMP/pred_prov" \
+                   --output_dir "$TMP/report_off" --caution_threshold 0
+refused caution_above "must be above 0 and below the threshold" "$PYTHON" scripts/report.py \
+                   --predictions_dir "$TMP/pred" --output_dir "$TMP/report_bad" --caution_threshold 0.95
+step provisional "$PYTHON" - "$TMP" "$LOW" "$HIGH" <<'PY'
+import json
+import sys
+from pathlib import Path
+import pandas as pd
+tmp, low, high = Path(sys.argv[1]), float(sys.argv[2]), float(sys.argv[3])
+info = json.load(open(tmp / "pred" / "prediction_info.json"))
+assert info["caution_threshold"] == 0.8 and info["threshold"] == 0.9, info
+t = pd.read_csv(tmp / "thresholds.csv")
+assert {"share_band", "accuracy_band", "auc", "youden_cutoff"} <= set(t.columns), t.columns
+b = pd.read_csv(tmp / "bands.csv")
+assert len(b) == len(t) and (b["model_config_sha256"].str.len() == 64).all(), b
+p = pd.read_csv(tmp / "pred_prov" / "predictions.csv")
+assert (p["reported_level"] == "provisional").all(), p["reported_level"]
+s = pd.read_csv(tmp / "report_prov" / "report_summary.csv")
+assert list(s["reported_level"]) == list(p["reported_level"]), "the report must keep the calls of the prediction run"
+prov = s[s["reported_level"] == "provisional"]
+assert len(prov) == len(s), f"not every call is provisional between {low} and {high}: {s['reported_level']}"
+assert (prov["confidence"] >= low).all() and (prov["confidence"] < high).all(), prov
+assert (prov["flags"].fillna("").str.contains("provisional")).all(), prov["flags"]
+page = (tmp / "report_prov" / "cases" / f"{prov['sample'].iloc[0]}.html").read_text()
+for needed in ("Provisional: to be confirmed by other tests", "This is a provisional result", "provisional range",
+               "as in this sample, and", "dotted line the caution threshold"):
+    assert needed in page, f"provisional page: {needed!r} missing"
+assert "It is indicative only and is not a result" not in page
+assert "Provisional subtype" in (tmp / "report_prov" / "index.html").read_text()
+off = pd.read_csv(tmp / "report_off" / "report_summary.csv")
+assert "provisional" not in set(off["reported_level"]) and off["caution_threshold"].isna().all(), off
+assert (off.set_index("sample").loc[prov["sample"], "reported_level"] != "provisional").all()
+print(f"provisional ok: {len(prov)} of {len(s)} samples provisional between {low} and {high}")
+PY
 echo "REPORT TEST PASSED"
