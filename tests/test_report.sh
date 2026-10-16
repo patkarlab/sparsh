@@ -339,10 +339,13 @@ assert (prov["confidence"] >= low).all() and (prov["confidence"] < high).all(), 
 assert (prov["flags"].fillna("").str.contains("provisional")).all(), prov["flags"]
 page = (tmp / "report_prov" / "cases" / f"{prov['sample'].iloc[0]}.html").read_text()
 from report.text import fmt_threshold
-for needed in (f"Caution: confidence between {fmt_threshold(low)} and {fmt_threshold(high)}", "This is a provisional result", "provisional range",
-               "as in this sample, and", "dotted line the caution threshold"):
+caution = f"Caution: confidence between {fmt_threshold(low)} and {fmt_threshold(high)}"
+for needed in (caution, f"({caution})", "provisional range", "as in this sample, and",
+               "dotted line the caution threshold"):
     assert needed in page, f"provisional page: {needed!r} missing"
-assert "It is indicative only and is not a result" not in page
+for absent in ("It is indicative only and is not a result", "Reported as a provisional subtype",
+               "Recommended confirmation", "This is a provisional result"):
+    assert absent not in page, f"provisional page: {absent!r} shown"
 assert "Provisional subtype" in (tmp / "report_prov" / "index.html").read_text()
 off = pd.read_csv(tmp / "report_off" / "report_summary.csv")
 assert "provisional" not in set(off["reported_level"]) and off["caution_threshold"].isna().all(), off

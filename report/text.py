@@ -182,8 +182,7 @@ def describe_result(case: Case, ctx: Context) -> Result:
         result, result_name = top, entry.get("name", "")
         result_note = f"Caution: confidence between {cs} and {ts}"
         confidence, result_class = case.confidence, case.top
-        level_text = (f"Reported as a provisional subtype: the most probable class reached {cs} but not the "
-                      f"reporting threshold of {ts}, and no family of related subtypes reached {ts}.")
+        level_text = ""                   # the label of the result says it all
     elif level == "lineage":
         lineage = case.lineage
         result, result_note = f"{lineage}, subtype undetermined", ""
@@ -276,7 +275,9 @@ def interpret(case: Case, res: Result, ctx: Context) -> Interpretation:
     if case.level in ("subtype", "provisional"):
         heading, summary, confirm, note = _class_text(ctx, case.top)
         if case.level == "provisional":
-            heading = f"Provisional: {heading}"
+            cs = fmt_threshold(ctx.caution_threshold) if ctx.caution_threshold is not None else "the caution threshold"
+            heading = f"{heading} (Caution: confidence between {cs} and {t})"
+            confirm = ""
         paragraphs = [summary]
     elif case.level == "no_subtype":
         if case.top in text["classes"]:
@@ -329,13 +330,7 @@ def interpret(case: Case, res: Result, ctx: Context) -> Interpretation:
             caveats.append(f"{observed} This is below {fmt_fraction(LOW_COVERAGE)}, a low coverage for the model"
                            f"{caution}; the evidence from cross-validation below describes how the model performed at "
                            "a similar coverage.")
-    if case.level == "provisional":
-        cs = fmt_threshold(ctx.caution_threshold) if ctx.caution_threshold is not None else "the caution threshold"
-        caveats.append(f"This is a provisional result. The probability of {ctx.shown(case.top)}, "
-                       f"{fmt_prob(case.confidence, ctx.threshold)}, reached {cs} but not the reporting threshold of "
-                       f"{t}. In cross-validation such calls were correct less often than calls at or above {t}, so "
-                       "the subtype must be confirmed by established methods before it is used.")
-    elif case.coverage_ok and case.confidence < ctx.threshold:
+    if case.coverage_ok and case.confidence < ctx.threshold and case.level != "provisional":
         caveats.append(f"The most probable class, {ctx.shown(case.top)}, has a probability of "
                        f"{fmt_prob(case.confidence, ctx.threshold)}, below the reporting threshold of {t}. It is "
                        "indicative only and is not a result.")

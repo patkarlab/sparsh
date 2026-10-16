@@ -140,9 +140,9 @@ def result_panel(case: Case, res: text.Result, ctx: Context) -> str:
     ]
     cells = "".join(f'<div class="field"><div class="label">{label}</div><div class="{cls}">{value}</div>{sub}</div>'
                     for label, value, sub, cls in fields)
-    level = f"<p>{e(res.level_text)}</p>" + (f"<p>{e(res.most_likely)}</p>" if res.most_likely else "")
+    level = "".join(f"<p>{e(t)}</p>" for t in (res.level_text, res.most_likely) if t)
     return (f'<section class="panel" aria-label="Result">\n<div class="fields">{cells}</div>\n'
-            f'<div class="level">{level}</div>\n</section>')
+            + (f'<div class="level">{level}</div>\n' if level else "") + '</section>')
 
 
 def probabilities(case: Case, ctx: Context) -> str:
