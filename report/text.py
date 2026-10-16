@@ -180,7 +180,7 @@ def describe_result(case: Case, ctx: Context) -> Result:
         cs = fmt_threshold(ctx.caution_threshold) if ctx.caution_threshold is not None else "the caution threshold"
         lineage = h.lineage_of[case.top]
         result, result_name = top, entry.get("name", "")
-        result_note = "Provisional: to be confirmed by other tests"
+        result_note = f"Caution: confidence between {cs} and {ts}"
         confidence, result_class = case.confidence, case.top
         level_text = (f"Reported as a provisional subtype: the most probable class reached {cs} but not the "
                       f"reporting threshold of {ts}, and no family of related subtypes reached {ts}.")

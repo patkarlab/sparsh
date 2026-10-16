@@ -338,7 +338,8 @@ assert len(prov) == len(s), f"not every call is provisional between {low} and {h
 assert (prov["confidence"] >= low).all() and (prov["confidence"] < high).all(), prov
 assert (prov["flags"].fillna("").str.contains("provisional")).all(), prov["flags"]
 page = (tmp / "report_prov" / "cases" / f"{prov['sample'].iloc[0]}.html").read_text()
-for needed in ("Provisional: to be confirmed by other tests", "This is a provisional result", "provisional range",
+from report.text import fmt_threshold
+for needed in (f"Caution: confidence between {fmt_threshold(low)} and {fmt_threshold(high)}", "This is a provisional result", "provisional range",
                "as in this sample, and", "dotted line the caution threshold"):
     assert needed in page, f"provisional page: {needed!r} missing"
 assert "It is indicative only and is not a result" not in page
